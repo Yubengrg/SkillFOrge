@@ -1,0 +1,66 @@
+{% extends "admin/change_list.html" %}
+
+{% block content %}
+  {{ block.super }}
+
+  <div class="analytics-section" style="margin-top: 40px;">
+    <h2>Platform analytics (last 30 days)</h2>
+    <p>From {{ start_date }} to {{ end_date }}</p>
+
+    <div style="display: flex; flex-wrap: wrap; gap: 24px; margin-top: 20px;">
+      <div style="flex: 1; min-width: 300px;">
+        <h3>New users per day</h3>
+        <canvas id="signupsChart"></canvas>
+      </div>
+
+      <div style="flex: 1; min-width: 300px;">
+        <h3>Course enrollments per day</h3>
+        <canvas id="enrollmentsChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+    (function() {
+      const labels = {{ chart_labels|safe }};
+      const signups = {{ chart_signups|safe }};
+      const enrollments = {{ chart_enrollments|safe }};
+
+      const ctx1 = document.getElementById('signupsChart').getContext('2d');
+      const ctx2 = document.getElementById('enrollmentsChart').getContext('2d');
+
+      new Chart(ctx1, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: 'New users',
+            data: signups,
+            fill: false,
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+        }
+      });
+
+      new Chart(ctx2, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: 'Enrollments',
+            data: enrollments,
+            fill: false,
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+        }
+      });
+    })();
+  </script>
+{% endblock %}
