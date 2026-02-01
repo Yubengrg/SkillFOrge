@@ -1,8 +1,7 @@
 // Enhanced Multi-Step Instructor Application Form
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-
-const API_BASE = "http://localhost:8000/api";
+import { API_BASE } from "../config";
 
 function BecomeInstructorPage({ currentUser }) {
     const navigate = useNavigate();
@@ -126,7 +125,7 @@ function BecomeInstructorPage({ currentUser }) {
                 data.append("resume", formData.resume);
             }
 
-            const res = await fetch(API_BASE + "/apply-instructor/", {
+        const res = await fetch(API_BASE + "/auth/apply-instructor/", {
                 method: "POST",
                 credentials: "include",
                 body: data,

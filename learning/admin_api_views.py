@@ -7,13 +7,14 @@ from django.contrib.auth.decorators import login_required, user_passes_test
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth import get_user_model
 from django.db.models import Count, Q, Avg
+from django.db.models.functions import TruncDate
 from django.utils import timezone
 from datetime import timedelta
 import json
 
 from .models import (
-    InstructorProfile, Course, Lesson, Enrollment, 
-    Category, LessonProgress
+    InstructorProfile, Course, Lesson, Enrollment,
+    Category, LessonProgress, Report
 )
 
 User = get_user_model()
@@ -79,6 +80,110 @@ def admin_stats(request):
     })
 
 
+@login_required
+@user_passes_test(is_admin)
+@require_http_methods(["GET"])
+def admin_overview(request):
+    """Expanded admin dashboard payload."""
+    today = timezone.now().date()
+    start_day = today - timedelta(days=13)
+
+    def date_series(qs, date_field):
+        rows = (
+            qs.annotate(day=TruncDate(date_field))
+            .values("day")
+            .annotate(count=Count("id"))
+            .order_by("day")
+        )
+        counts = {row["day"]: row["count"] for row in rows}
+        series = []
+        for i in range(14):
+            day = start_day + timedelta(days=i)
+            series.append({"date": day.isoformat(), "count": counts.get(day, 0)})
+        return series
+
+    total_users = User.objects.count()
+    total_courses = Course.objects.filter(is_published=True).count()
+    total_enrollments = Enrollment.objects.count()
+    total_instructors = InstructorProfile.objects.filter(is_approved=True).count()
+    pending_instructors_count = InstructorProfile.objects.filter(is_approved=False).count()
+    pending_courses_count = Course.objects.filter(is_approved=False).count()
+    completed_enrollments = Enrollment.objects.filter(completed_at__isnull=False).count()
+    completion_rate = (completed_enrollments / total_enrollments * 100) if total_enrollments > 0 else 0
+
+    stats = {
+        "total_users": total_users,
+        "total_courses": total_courses,
+        "total_enrollments": total_enrollments,
+        "total_instructors": total_instructors,
+        "pending_instructors": pending_instructors_count,
+        "pending_courses": pending_courses_count,
+        "completion_rate": round(completion_rate, 1),
+    }
+
+    trends = {
+        "users": date_series(User.objects.all(), "date_joined"),
+        "enrollments": date_series(Enrollment.objects.all(), "started_at"),
+        "courses": date_series(Course.objects.all(), "created_at"),
+    }
+
+    instructors = InstructorProfile.objects.filter(is_approved=False).select_related("user")[:8]
+    pending_instructors = [{
+        "id": instructor.id,
+        "user_id": instructor.user.id,
+        "name": f"{instructor.user.first_name} {instructor.user.last_name}".strip() or instructor.user.email,
+        "email": instructor.user.email,
+        "bio": instructor.bio,
+        "expertise": instructor.expertise,
+        "profile_image_url": instructor.profile_image_url,
+        "years_of_experience": instructor.years_of_experience,
+        "linkedin_url": instructor.linkedin_url,
+        "portfolio_url": instructor.portfolio_url,
+        "resume_url": instructor.resume.url if instructor.resume else None,
+        "certifications": instructor.certifications,
+        "teaching_experience": instructor.teaching_experience,
+        "why_teach": instructor.why_teach,
+        "sample_course_topic": instructor.sample_course_topic,
+        "created_at": instructor.created_at.isoformat()
+    } for instructor in instructors]
+
+    courses = Course.objects.filter(is_approved=False).select_related("instructor__user", "category").prefetch_related("lessons")[:8]
+    pending_courses = [{
+        "id": course.id,
+        "title": course.title,
+        "description": course.description,
+        "instructor_name": f"{course.instructor.user.first_name} {course.instructor.user.last_name}".strip() if course.instructor else "Unknown",
+        "instructor_email": course.instructor.user.email if course.instructor else None,
+        "category": course.category.name if course.category else None,
+        "level": course.level,
+        "lesson_count": course.lessons.count(),
+        "learning_objectives": course.learning_objectives,
+        "estimated_duration_hours": course.estimated_duration_hours,
+        "is_published": course.is_published,
+        "is_approved": course.is_approved,
+        "created_at": course.created_at.isoformat()
+    } for course in courses]
+
+    reports = Report.objects.filter(is_resolved=False).select_related("course", "lesson", "reporter")[:6]
+    report_data = [{
+        "id": report.id,
+        "type": report.type,
+        "message": report.message,
+        "created_at": report.created_at.isoformat(),
+        "course_title": report.course.title if report.course else None,
+        "lesson_title": report.lesson.title if report.lesson else None,
+        "reporter": report.reporter.email,
+    } for report in reports]
+
+    return JsonResponse({
+        "stats": stats,
+        "trends": trends,
+        "pending_instructors": pending_instructors,
+        "pending_courses": pending_courses,
+        "reports": report_data,
+    })
+
+
 # ============================================
 # INSTRUCTOR MANAGEMENT APIs
 # ============================================
@@ -97,6 +202,15 @@ def pending_instructors(request):
         'email': instructor.user.email,
         'bio': instructor.bio,
         'expertise': instructor.expertise,
+        'profile_image_url': instructor.profile_image_url,
+        'years_of_experience': instructor.years_of_experience,
+        'linkedin_url': instructor.linkedin_url,
+        'portfolio_url': instructor.portfolio_url,
+        'resume_url': instructor.resume.url if instructor.resume else None,
+        'certifications': instructor.certifications,
+        'teaching_experience': instructor.teaching_experience,
+        'why_teach': instructor.why_teach,
+        'sample_course_topic': instructor.sample_course_topic,
         'created_at': instructor.created_at.isoformat()
     } for instructor in instructors]
     
@@ -161,9 +275,14 @@ def pending_courses(request):
         'title': course.title,
         'description': course.description,
         'instructor_name': f"{course.instructor.user.first_name} {course.instructor.user.last_name}".strip() if course.instructor else 'Unknown',
+        'instructor_email': course.instructor.user.email if course.instructor else None,
         'category': course.category.name if course.category else None,
         'level': course.level,
         'lesson_count': course.lessons.count(),
+        'learning_objectives': course.learning_objectives,
+        'estimated_duration_hours': course.estimated_duration_hours,
+        'is_published': course.is_published,
+        'is_approved': course.is_approved,
         'created_at': course.created_at.isoformat()
     } for course in courses]
     

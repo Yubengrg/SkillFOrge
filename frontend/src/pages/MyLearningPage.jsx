@@ -1,8 +1,7 @@
 // src/pages/MyLearningPage.jsx
 import React, { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-
-const API_BASE = "http://localhost:8000/api";
+import { API_BASE } from "../config";
 
 function MyLearningPage({ currentUser }) {
   const [enrollments, setEnrollments] = useState([]);

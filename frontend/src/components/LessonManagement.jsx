@@ -1,7 +1,6 @@
 // Lesson Management Component for Instructor Dashboard
 import React, { useState, useEffect } from "react";
-
-const API_BASE = "http://localhost:8000/api";
+import { API_BASE } from "../config";
 
 function LessonManagement({ courseId, onClose }) {
     const [lessons, setLessons] = useState([]);

@@ -22,7 +22,7 @@ def create_enrollment_activity(sender, instance, created, **kwargs):
 @receiver(post_save, sender=LessonProgress)
 def create_lesson_completion_activity(sender, instance, created, **kwargs):
     """Create activity when user completes a lesson"""
-    if instance.completed and created:
+    if instance.is_completed and created:
         Activity.objects.create(
             user=instance.enrollment.user,
             activity_type='completed_lesson',

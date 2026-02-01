@@ -1,4 +1,5 @@
 import json
+import re
 from decimal import Decimal
 
 from django.http import JsonResponse, HttpResponseNotAllowed
@@ -25,13 +26,36 @@ def require_auth(request):
     return None
 
 
+def _youtube_thumbnail(url):
+    if not url:
+        return None
+    match = re.search(
+        r"(?:youtu\.be\/|youtube\.com(?:\/embed\/|\/v\/|\/watch\?v=|\/watch\?.+&v=))([^&\n?#]+)",
+        url,
+    )
+    if not match:
+        return None
+    return f"https://img.youtube.com/vi/{match.group(1)}/hqdefault.jpg"
+
+
 def serialize_lesson(lesson):
+    thumbnail_url = lesson.thumbnail_url
+    if not thumbnail_url and lesson.video_source == "youtube":
+        thumbnail_url = _youtube_thumbnail(lesson.video_url)
+
     return {
         "id": lesson.id,
         "title": lesson.title,
-        "content": lesson.content,
+        "description": lesson.description,
         "order": lesson.order,
         "is_published": lesson.is_published,
+        "is_free": lesson.is_free,
+        "video_url": lesson.video_url,
+        "video_file": lesson.video_file.url if lesson.video_file else None,
+        "video_source": lesson.video_source,
+        "duration_minutes": lesson.duration_minutes,
+        "thumbnail_url": thumbnail_url,
+        "quiz_required": lesson.quiz_required,
     }
 
 
@@ -48,19 +72,18 @@ def serialize_course(course, include_modules=True, include_lessons=False):
     }
 
     if include_modules:
+        lessons = (
+            [serialize_lesson(l) for l in course.lessons.all().order_by("order")]
+            if include_lessons
+            else []
+        )
         data["modules"] = [
             {
-                "id": m.id,
-                "title": m.title,
-                "order": m.order,
-                "lessons": [
-                    serialize_lesson(l)
-                    for l in m.lessons.all().order_by("order")
-                ]
-                if include_lessons
-                else [],
+                "id": None,
+                "title": "Lessons",
+                "order": 1,
+                "lessons": lessons,
             }
-            for m in course.modules.all().order_by("order")
         ]
     return data
 
@@ -85,6 +108,38 @@ def course_detail(request, slug):
         slug=slug,
     )
     data = serialize_course(course, include_modules=True, include_lessons=True)
+    if request.user.is_authenticated:
+        enrollment = Enrollment.objects.filter(
+            user=request.user, course=course
+        ).first()
+        data["is_enrolled"] = bool(enrollment)
+        if enrollment and data.get("modules"):
+            lesson_ids = [
+                lesson["id"]
+                for module in data["modules"]
+                for lesson in module.get("lessons", [])
+                if lesson.get("id") is not None
+            ]
+            completed_ids = set(
+                LessonProgress.objects.filter(
+                    enrollment=enrollment,
+                    lesson_id__in=lesson_ids,
+                    is_completed=True,
+                ).values_list("lesson_id", flat=True)
+            )
+            for module in data["modules"]:
+                for lesson in module.get("lessons", []):
+                    lesson["is_completed"] = lesson.get("id") in completed_ids
+        elif data.get("modules"):
+            for module in data["modules"]:
+                for lesson in module.get("lessons", []):
+                    lesson["is_completed"] = False
+    else:
+        data["is_enrolled"] = False
+        if data.get("modules"):
+            for module in data["modules"]:
+                for lesson in module.get("lessons", []):
+                    lesson["is_completed"] = False
     return JsonResponse(data, status=200)
 
 
@@ -158,50 +213,65 @@ def complete_lesson(request, lesson_id):
     if auth_error:
         return auth_error
 
-    lesson = get_object_or_404(Lesson, id=lesson_id, is_published=True)
-    course = lesson.module.course
+    try:
+        lesson = get_object_or_404(Lesson, id=lesson_id, is_published=True)
+        course = lesson.course
+        if not course:
+            return JsonResponse(
+                {"error": "Lesson is not linked to a course"},
+                status=400,
+            )
 
-    # ensure enrollment exists
-    enrollment, _ = Enrollment.objects.get_or_create(
-        user=request.user, course=course
-    )
+        # ensure enrollment exists
+        enrollment, _ = Enrollment.objects.get_or_create(
+            user=request.user, course=course
+        )
 
-    lp, _ = LessonProgress.objects.get_or_create(
-        enrollment=enrollment, lesson=lesson
-    )
-    lp.is_completed = True
-    lp.completed_at = timezone.now()
-    lp.save()
+        progress_qs = LessonProgress.objects.filter(
+            enrollment=enrollment, lesson=lesson
+        ).order_by("-id")
+        lp = progress_qs.first()
+        if lp is None:
+            lp = LessonProgress(enrollment=enrollment, lesson=lesson)
 
-    # recalc course progress
-    total_lessons = Lesson.objects.filter(
-        course=course, is_published=True
-    ).count()
-    completed_lessons = LessonProgress.objects.filter(
-        enrollment=enrollment,
-        is_completed=True,
-    ).count()
+        lp.is_completed = True
+        lp.completed_at = timezone.now()
+        lp.save()
 
-    if total_lessons > 0:
-        progress = (Decimal(completed_lessons) / Decimal(total_lessons)) * 100
-    else:
-        progress = Decimal(0)
+        # recalc course progress
+        total_lessons = Lesson.objects.filter(
+            course=course, is_published=True
+        ).count()
+        completed_lessons = LessonProgress.objects.filter(
+            enrollment=enrollment,
+            lesson__course=course,
+            is_completed=True,
+        ).count()
 
-    enrollment.progress_percent = progress
-    if progress >= 100 and enrollment.completed_at is None:
-        enrollment.completed_at = timezone.now()
-    enrollment.save()
+        if total_lessons > 0:
+            progress = (
+                Decimal(completed_lessons) / Decimal(total_lessons)
+            ) * 100
+        else:
+            progress = Decimal(0)
 
-    return JsonResponse(
-        {
-            "lesson_id": lesson.id,
-            "course_id": course.id,
-            "progress_percent": float(enrollment.progress_percent),
-            "completed_lessons": completed_lessons,
-            "total_lessons": total_lessons,
-        },
-        status=200,
-    )
+        enrollment.progress_percent = progress
+        if progress >= 100 and enrollment.completed_at is None:
+            enrollment.completed_at = timezone.now()
+        enrollment.save()
+
+        return JsonResponse(
+            {
+                "lesson_id": lesson.id,
+                "course_id": course.id,
+                "progress_percent": float(enrollment.progress_percent),
+                "completed_lessons": completed_lessons,
+                "total_lessons": total_lessons,
+            },
+            status=200,
+        )
+    except Exception as exc:
+        return JsonResponse({"error": str(exc)}, status=500)
 
 
 # POST /api/reports/

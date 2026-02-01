@@ -1,13 +1,14 @@
 // Course Learning Page - Main learning interface
 import React, { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import LessonQuiz from "../components/LessonQuiz";
-
-const API_BASE = "http://localhost:8000/api";
+import { API_BASE } from "../config";
 
 function CourseLearningPage({ currentUser }) {
     const { slug } = useParams();
     const navigate = useNavigate();
+    const location = useLocation();
+    const mediaBase = API_BASE.replace(/\/api$/, "");
 
     const [lessons, setLessons] = useState([]);
     const [currentLesson, setCurrentLesson] = useState(null);
@@ -16,6 +17,7 @@ function CourseLearningPage({ currentUser }) {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
     const [showQuiz, setShowQuiz] = useState(false);
+    const [autoPlayLessonId, setAutoPlayLessonId] = useState(null);
 
     // Check authentication
     useEffect(() => {
@@ -49,7 +51,17 @@ function CourseLearningPage({ currentUser }) {
 
                 // Set first lesson as current if available
                 if (lessonsData.lessons && lessonsData.lessons.length > 0) {
-                    setCurrentLesson(lessonsData.lessons[0]);
+                    const params = new URLSearchParams(location.search);
+                    const requestedLessonId = params.get("lesson");
+                    const requestedLesson = requestedLessonId
+                        ? lessonsData.lessons.find((l) => String(l.id) === requestedLessonId)
+                        : null;
+                    setCurrentLesson(requestedLesson || lessonsData.lessons[0]);
+                    setAutoPlayLessonId(
+                        params.get("autoplay") === "1" && requestedLesson
+                            ? requestedLesson.id
+                            : null
+                    );
                 }
 
                 // Fetch progress
@@ -71,7 +83,7 @@ function CourseLearningPage({ currentUser }) {
         };
 
         fetchData();
-    }, [currentUser, slug]);
+    }, [currentUser, slug, location.search]);
 
     const handleLessonClick = (lesson) => {
         if (!lesson.is_unlocked) {
@@ -285,6 +297,48 @@ function CourseLearningPage({ currentUser }) {
                                 }
                             }}
                         >
+                            {lesson.thumbnail_url ? (
+                                <img
+                                    src={lesson.thumbnail_url.startsWith("http") ? lesson.thumbnail_url : `${mediaBase}${lesson.thumbnail_url}`}
+                                    alt={`${lesson.title} thumbnail`}
+                                    style={{
+                                        width: 46,
+                                        height: 32,
+                                        borderRadius: "0.4rem",
+                                        objectFit: "cover",
+                                        border: "1px solid rgba(255,255,255,0.08)",
+                                        background: "#111827",
+                                        flexShrink: 0,
+                                    }}
+                                />
+                            ) : lesson.video_file ? (
+                                <video
+                                    muted
+                                    playsInline
+                                    preload="metadata"
+                                    src={`${lesson.video_file.startsWith("http") ? lesson.video_file : `${mediaBase}${lesson.video_file}`}#t=0.1`}
+                                    style={{
+                                        width: 46,
+                                        height: 32,
+                                        borderRadius: "0.4rem",
+                                        objectFit: "cover",
+                                        border: "1px solid rgba(255,255,255,0.08)",
+                                        background: "#111827",
+                                        flexShrink: 0,
+                                    }}
+                                />
+                            ) : (
+                                <div
+                                    style={{
+                                        width: 46,
+                                        height: 32,
+                                        borderRadius: "0.4rem",
+                                        border: "1px solid rgba(255,255,255,0.08)",
+                                        background: "#111827",
+                                        flexShrink: 0,
+                                    }}
+                                />
+                            )}
                             <span style={{
                                 width: 24,
                                 height: 24,
@@ -351,7 +405,8 @@ function CourseLearningPage({ currentUser }) {
                                 display: "flex",
                                 alignItems: "center",
                                 justifyContent: "center",
-                                minHeight: 0 // Crucial for flex overflow
+                                minHeight: 0, // Crucial for flex overflow
+                                maxHeight: "calc(100vh - 220px)",
                             }}>
                                 {currentLesson.video_url || currentLesson.video_file ? (
                                     <VideoPlayer
@@ -360,6 +415,7 @@ function CourseLearningPage({ currentUser }) {
                                         videoSource={currentLesson.video_source}
                                         lessonId={currentLesson.id}
                                         lastPosition={currentLesson.last_position_seconds}
+                                        autoplayLessonId={autoPlayLessonId}
                                     />
                                 ) : (
                                     <div style={{
@@ -510,14 +566,18 @@ function CourseLearningPage({ currentUser }) {
 }
 
 // Video Player Component
-function VideoPlayer({ videoUrl, videoFile, videoSource, lessonId, lastPosition }) {
+function VideoPlayer({ videoUrl, videoFile, videoSource, lessonId, lastPosition, autoplayLessonId }) {
+    const isAutoplay = lessonId === autoplayLessonId;
     // If video file exists, use native HTML5 video player
     if (videoFile) {
-        const videoSrc = `http://localhost:8000${videoFile}`;
+        const mediaBase = API_BASE.replace(/\/api$/, "");
+        const videoSrc = videoFile.startsWith("http") ? videoFile : `${mediaBase}${videoFile}`;
         return (
             <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
                 <video
                     controls
+                    autoPlay={isAutoplay}
+                    muted={isAutoplay}
                     style={{
                         maxWidth: "100%",
                         maxHeight: "100%",
@@ -540,10 +600,10 @@ function VideoPlayer({ videoUrl, videoFile, videoSource, lessonId, lastPosition 
         if (source === "youtube") {
             // Extract video ID from various YouTube URL formats
             const videoId = url.match(/(?:youtu\.be\/|youtube\.com(?:\/embed\/|\/v\/|\/watch\?v=|\/watch\?.+&v=))([^&\n?#]+)/)?.[1];
-            return videoId ? `https://www.youtube.com/embed/${videoId}?autoplay=0&start=${lastPosition || 0}` : url;
+            return videoId ? `https://www.youtube.com/embed/${videoId}?autoplay=${isAutoplay ? 1 : 0}&start=${lastPosition || 0}` : url;
         } else if (source === "vimeo") {
             const videoId = url.match(/vimeo\.com\/(\d+)/)?.[1];
-            return videoId ? `https://player.vimeo.com/video/${videoId}` : url;
+            return videoId ? `https://player.vimeo.com/video/${videoId}?autoplay=${isAutoplay ? 1 : 0}` : url;
         }
         return url;
     };

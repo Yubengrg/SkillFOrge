@@ -6,11 +6,14 @@ from django.views.decorators.http import require_http_methods
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.csrf import csrf_exempt
 from django.db.models import Count, Avg
+from django.db.models.functions import TruncDate
+from django.utils import timezone
+from datetime import timedelta
 import json
 
 from .models import (
     InstructorProfile, Course, Lesson, Enrollment,
-    Category, LessonProgress
+    Category, LessonProgress, QuizAttempt, Quiz
 )
 
 
@@ -60,6 +63,98 @@ def instructor_stats(request):
             'total_students': total_students,
             'avg_rating': avg_rating
         }
+    })
+
+
+@login_required
+@require_http_methods(["GET"])
+def instructor_overview(request):
+    """Expanded instructor dashboard payload."""
+    try:
+        instructor = request.user.instructor_profile
+        if not instructor.is_approved:
+            return JsonResponse({'error': 'Not an approved instructor'}, status=403)
+    except:
+        return JsonResponse({'error': 'Not an instructor'}, status=403)
+
+    courses = Course.objects.filter(instructor=instructor).select_related("category")
+    total_courses = courses.count()
+    published_courses = courses.filter(is_published=True).count()
+    pending_courses = courses.filter(is_approved=False).count()
+    total_students = Enrollment.objects.filter(course__instructor=instructor).count()
+
+    avg_rating = 4.5
+
+    today = timezone.now().date()
+    start_day = today - timedelta(days=13)
+
+    def date_series(qs, date_field):
+        rows = (
+            qs.annotate(day=TruncDate(date_field))
+            .values("day")
+            .annotate(count=Count("id"))
+            .order_by("day")
+        )
+        counts = {row["day"]: row["count"] for row in rows}
+        series = []
+        for i in range(14):
+            day = start_day + timedelta(days=i)
+            series.append({"date": day.isoformat(), "count": counts.get(day, 0)})
+        return series
+
+    enrollments = Enrollment.objects.filter(course__instructor=instructor)
+    trends = {
+        "enrollments": date_series(enrollments, "started_at"),
+    }
+
+    course_data = []
+    for course in courses:
+        course_enrollments = Enrollment.objects.filter(course=course)
+        total_enrollments = course_enrollments.count()
+        completed = course_enrollments.filter(completed_at__isnull=False).count()
+        completion_rate = (completed / total_enrollments * 100) if total_enrollments > 0 else 0
+
+        avg_progress = course_enrollments.aggregate(avg=Avg("progress_percent"))["avg"] or 0
+        last_enrollment = course_enrollments.order_by("-started_at").values_list("started_at", flat=True).first()
+
+        quizzes = Quiz.objects.filter(course=course)
+        attempts = QuizAttempt.objects.filter(quiz__in=quizzes)
+        total_attempts = attempts.count()
+        passed_attempts = attempts.filter(passed=True).count()
+        quiz_pass_rate = (passed_attempts / total_attempts * 100) if total_attempts > 0 else 0
+
+        lesson_progress = LessonProgress.objects.filter(lesson__course=course)
+        avg_watch = lesson_progress.aggregate(avg=Avg("watch_time_seconds"))["avg"] or 0
+
+        course_data.append({
+            "id": course.id,
+            "title": course.title,
+            "slug": course.slug,
+            "category": course.category.name if course.category else None,
+            "level": course.level,
+            "is_published": course.is_published,
+            "is_approved": course.is_approved,
+            "lesson_count": course.lessons.count(),
+            "enrollments": total_enrollments,
+            "completion_rate": round(completion_rate, 1),
+            "avg_progress": round(float(avg_progress), 1),
+            "quiz_pass_rate": round(quiz_pass_rate, 1),
+            "avg_watch_seconds": round(avg_watch, 0),
+            "last_enrollment": last_enrollment.isoformat() if last_enrollment else None,
+        })
+
+    top_courses = sorted(course_data, key=lambda c: c["enrollments"], reverse=True)[:6]
+
+    return JsonResponse({
+        "stats": {
+            "total_courses": total_courses,
+            "published_courses": published_courses,
+            "pending_courses": pending_courses,
+            "total_students": total_students,
+            "avg_rating": avg_rating,
+        },
+        "trends": trends,
+        "courses": top_courses,
     })
 
 

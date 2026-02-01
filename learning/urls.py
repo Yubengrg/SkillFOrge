@@ -26,6 +26,7 @@ urlpatterns = [
     # ADMIN API ENDPOINTS
     # ============================================
     path("admin/stats/", admin_api_views.admin_stats, name="admin_stats"),
+    path("admin/overview/", admin_api_views.admin_overview, name="admin_overview"),
     path("admin/instructors/pending/", admin_api_views.pending_instructors, name="pending_instructors"),
     path("admin/instructors/<int:instructor_id>/approve/", admin_api_views.approve_instructor, name="approve_instructor"),
     path("admin/instructors/<int:instructor_id>/reject/", admin_api_views.reject_instructor, name="reject_instructor"),
@@ -38,6 +39,7 @@ urlpatterns = [
     # INSTRUCTOR API ENDPOINTS
     # ============================================
     path("instructor/stats/", instructor_api_views.instructor_stats, name="instructor_stats"),
+    path("instructor/overview/", instructor_api_views.instructor_overview, name="instructor_overview"),
     path("instructor/courses/", instructor_api_views.instructor_courses, name="instructor_courses"),
     path("instructor/courses/create/", instructor_api_views.create_course, name="create_course"),
     path("instructor/courses/<int:course_id>/update/", instructor_api_views.update_course, name="update_course"),

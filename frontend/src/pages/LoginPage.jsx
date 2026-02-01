@@ -15,107 +15,62 @@ function LoginPage({
   onGoogleCredential,
 }) {
   return (
-    <main style={authMainStyle}>
-      <div style={authCardStyle}>
-        <h1 style={{ fontSize: "1.5rem", marginBottom: "0.5rem" }}>Log in</h1>
-        <p
-          style={{
-            fontSize: "0.9rem",
-            color: "#6b7280",
-            marginBottom: "1.25rem",
-          }}
-        >
-          Log in to continue your learning journey.
-        </p>
+    <main className="auth-shell">
+      <div className="auth-card">
+        <span className="eyebrow">Welcome back</span>
+        <h1 className="headline" style={{ fontSize: "2.1rem" }}>
+          Log in
+        </h1>
+        <p className="subhead">Log in to continue your learning journey.</p>
 
-        <form onSubmit={onSubmit}>
-          <label
-            style={{
-              display: "block",
-              marginBottom: "0.75rem",
-              fontSize: "0.8rem",
-            }}
-          >
+        <form onSubmit={onSubmit} style={{ marginTop: "1.5rem" }}>
+          <label className="form-field">
             Email
             <input
+              className="input"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              style={inputStyle}
               placeholder="you@example.com"
               required
             />
           </label>
 
-          <label
-            style={{
-              display: "block",
-              marginBottom: "1rem",
-              fontSize: "0.8rem",
-            }}
-          >
+          <label className="form-field">
             Password
             <input
+              className="input"
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              style={inputStyle}
               placeholder="••••••••"
               required
             />
           </label>
 
-          <button type="submit" style={buttonStyle} disabled={loading}>
+          <button type="submit" className="btn btn--primary" disabled={loading}>
             {loading ? "Logging in..." : "Log in"}
           </button>
         </form>
 
-        {/* Divider */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "0.75rem",
-            marginTop: "1.25rem",
-            marginBottom: "0.75rem",
-            fontSize: "0.75rem",
-            color: "#9ca3af",
-          }}
-        >
-          <div style={{ flex: 1, height: 1, background: "#e5e7eb" }} />
+        <div className="divider">
+          <span />
           <span>or</span>
-          <div style={{ flex: 1, height: 1, background: "#e5e7eb" }} />
+          <span />
         </div>
 
-        {/* Google sign-in */}
         <GoogleSignInButton onGoogleCredential={onGoogleCredential} />
 
         {message && (
-          <div
-            style={{
-              marginTop: "0.9rem",
-              fontSize: "0.8rem",
-              color: "#b91c1c",
-            }}
-          >
-            <p>{message}</p>
-
-            {/* If backend says account is not verified, show resend button */}
+          <div style={{ marginTop: "1rem" }}>
+            <p style={{ color: "#b45309", fontSize: "0.9rem" }}>{message}</p>
             {unverifiedEmail && (
               <button
                 type="button"
                 onClick={onResendVerification}
                 disabled={resendLoading}
-                style={{
-                  marginTop: "0.5rem",
-                  padding: "0.4rem 0.8rem",
-                  borderRadius: 999,
-                  border: "1px solid #f97316",
-                  background: "#fff7ed",
-                  color: "#9a3412",
-                  fontSize: "0.8rem",
-                  cursor: resendLoading ? "default" : "pointer",
-                }}
+                className="btn btn--ghost"
+                style={{ marginTop: "0.6rem" }}
               >
                 {resendLoading ? "Sending..." : "Resend verification email"}
               </button>
@@ -123,18 +78,9 @@ function LoginPage({
           </div>
         )}
 
-        <p
-          style={{
-            marginTop: "1.25rem",
-            fontSize: "0.8rem",
-            color: "#6b7280",
-          }}
-        >
+        <p className="muted" style={{ marginTop: "1.5rem" }}>
           Don&apos;t have an account?{" "}
-          <Link
-            to="/signup"
-            style={{ color: "#f97316", textDecoration: "none" }}
-          >
+          <Link to="/signup" style={{ color: "var(--brand)" }}>
             Sign up
           </Link>
         </p>
@@ -143,7 +89,6 @@ function LoginPage({
   );
 }
 
-/** Google One Tap / Button component */
 function GoogleSignInButton({ onGoogleCredential }) {
   const divRef = useRef(null);
 
@@ -159,56 +104,22 @@ function GoogleSignInButton({ onGoogleCredential }) {
       },
     });
 
-    window.google.accounts.id.renderButton(divRef.current, {
-      theme: "outline",
-      size: "large",
-      width: 400, // pixel value instead of percentage
-    });
+    const render = () => {
+      const width = divRef.current?.offsetWidth || 320;
+      divRef.current.innerHTML = "";
+      window.google.accounts.id.renderButton(divRef.current, {
+        theme: "outline",
+        size: "large",
+        width,
+      });
+    };
+
+    render();
+    window.addEventListener("resize", render);
+    return () => window.removeEventListener("resize", render);
   }, [onGoogleCredential]);
 
-  return <div ref={divRef} />;
+  return <div ref={divRef} style={{ width: "100%" }} />;
 }
-
-const authMainStyle = {
-  flex: 1,
-  display: "flex",
-  justifyContent: "center",
-  alignItems: "center",
-  padding: "2.5rem 1.5rem 3.5rem",
-};
-
-const authCardStyle = {
-  width: "100%",
-  maxWidth: 420,
-  background: "#ffffff",
-  borderRadius: "1.25rem",
-  border: "1px solid #e5e7eb",
-  boxShadow: "0 12px 40px rgba(15,23,42,0.08)",
-  padding: "1.75rem 1.5rem",
-};
-
-const inputStyle = {
-  width: "100%",
-  marginTop: "0.25rem",
-  padding: "0.5rem 0.75rem",
-  borderRadius: "0.6rem",
-  border: "1px solid #d1d5db",
-  background: "#ffffff",
-  color: "#111827",
-  fontSize: "0.85rem",
-  outline: "none",
-};
-
-const buttonStyle = {
-  width: "100%",
-  padding: "0.6rem 0.75rem",
-  borderRadius: "0.8rem",
-  border: "none",
-  background: "#f97316",
-  color: "#111827",
-  cursor: "pointer",
-  fontWeight: 600,
-  fontSize: "0.9rem",
-};
 
 export default LoginPage;

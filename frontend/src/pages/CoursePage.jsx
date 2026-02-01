@@ -1,12 +1,12 @@
 // src/pages/CoursePage.jsx
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-
-const API_BASE = "http://localhost:8000/api";
+import { API_BASE } from "../config";
 
 function CoursePage({ currentUser }) {
   const { slug } = useParams();
   const navigate = useNavigate();
+  const mediaBase = API_BASE.replace(/\/api$/, "");
 
   const [course, setCourse] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -23,7 +23,9 @@ function CoursePage({ currentUser }) {
       try {
         setLoading(true);
         setError("");
-        const res = await fetch(`${API_BASE}/courses/${slug}/`);
+        const res = await fetch(`${API_BASE}/courses/${slug}/`, {
+          credentials: "include",
+        });
         const data = await res.json();
         if (!res.ok) {
           throw new Error(data.error || "Failed to load course");
@@ -61,6 +63,7 @@ function CoursePage({ currentUser }) {
         throw new Error(data.error || "Failed to enroll");
       }
 
+      setCourse((prev) => (prev ? { ...prev, is_enrolled: true } : prev));
       setMessage("You are enrolled in this course!");
     } catch (err) {
       console.error(err);
@@ -84,7 +87,10 @@ function CoursePage({ currentUser }) {
         method: "POST",
         credentials: "include",
       });
-      const data = await res.json();
+      const contentType = res.headers.get("content-type") || "";
+      const data = contentType.includes("application/json")
+        ? await res.json()
+        : { error: await res.text() };
 
       if (!res.ok) {
         throw new Error(data.error || "Failed to update progress");
@@ -93,10 +99,49 @@ function CoursePage({ currentUser }) {
       setMessage(
         `Progress updated: ${data.completed_lessons}/${data.total_lessons} lessons completed`
       );
+      setCourse((prev) => {
+        if (!prev) return prev;
+        const modules = prev.modules.map((module) => ({
+          ...module,
+          lessons: module.lessons.map((lesson) =>
+            lesson.id === lessonId ? { ...lesson, is_completed: true } : lesson
+          ),
+        }));
+        return { ...prev, modules };
+      });
     } catch (err) {
       console.error(err);
       setError(err.message || "Failed to update lesson");
     }
+  };
+
+  const getMediaUrl = (url) => {
+    if (!url) return null;
+    return url.startsWith("http") ? url : `${mediaBase}${url}`;
+  };
+
+  const getYoutubeThumb = (url) => {
+    const match = url?.match(/(?:youtu\.be\/|youtube\.com(?:\/embed\/|\/v\/|\/watch\?v=|\/watch\?.+&v=))([^&\n?#]+)/);
+    return match ? `https://img.youtube.com/vi/${match[1]}/hqdefault.jpg` : null;
+  };
+
+  const getLessonThumb = (lesson) => {
+    if (lesson.thumbnail_url) return getMediaUrl(lesson.thumbnail_url);
+    if (lesson.video_source === "youtube") return getYoutubeThumb(lesson.video_url);
+    return null;
+  };
+
+  const goToLesson = (lesson) => {
+    if (!course?.is_enrolled) {
+      navigate("/login");
+      return;
+    }
+    const params = new URLSearchParams();
+    params.set("lesson", String(lesson.id));
+    if (lesson.video_source === "youtube") {
+      params.set("autoplay", "1");
+    }
+    navigate(`/learn/${course.slug}?${params.toString()}`);
   };
 
   const openReport = (lesson) => {
@@ -225,11 +270,27 @@ function CoursePage({ currentUser }) {
           </span>
           <button
             onClick={handleEnroll}
-            disabled={enrolling}
+            disabled={enrolling || course.is_enrolled}
             style={primaryButtonStyle}
           >
-            {enrolling ? "Enrolling..." : "Enroll in course"}
+            {enrolling
+              ? "Enrolling..."
+              : course.is_enrolled
+                ? "Enrolled"
+                : "Enroll in course"}
           </button>
+          {course.is_enrolled && (
+            <button
+              onClick={() => navigate(`/learn/${course.slug}`)}
+              style={{
+                ...primaryButtonStyle,
+                background: "#10b981",
+                color: "#ecfdf5",
+              }}
+            >
+              Go to course
+            </button>
+          )}
         </div>
       </header>
 
@@ -308,6 +369,7 @@ function CoursePage({ currentUser }) {
                     key={lesson.id}
                     style={{
                       display: "flex",
+                      alignItems: "center",
                       flexWrap: "wrap",
                       justifyContent: "space-between",
                       gap: "0.5rem",
@@ -318,7 +380,58 @@ function CoursePage({ currentUser }) {
                       background: "#f9fafb",
                     }}
                   >
-                    <div>
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                      <button
+                        type="button"
+                        onClick={() => goToLesson(lesson)}
+                        disabled={!course.is_enrolled}
+                        style={{
+                          border: "none",
+                          padding: 0,
+                          background: "transparent",
+                          cursor: course.is_enrolled ? "pointer" : "default",
+                        }}
+                      >
+                        {getLessonThumb(lesson) ? (
+                          <img
+                            src={getLessonThumb(lesson)}
+                            alt={`${lesson.title} thumbnail`}
+                            style={{
+                              width: 64,
+                              height: 44,
+                              objectFit: "cover",
+                              borderRadius: "0.5rem",
+                              border: "1px solid #e5e7eb",
+                              background: "#ffffff",
+                            }}
+                          />
+                        ) : lesson.video_file ? (
+                          <video
+                            muted
+                            playsInline
+                            preload="metadata"
+                            src={`${getMediaUrl(lesson.video_file)}#t=0.1`}
+                            style={{
+                              width: 64,
+                              height: 44,
+                              objectFit: "cover",
+                              borderRadius: "0.5rem",
+                              border: "1px solid #e5e7eb",
+                              background: "#ffffff",
+                            }}
+                          />
+                        ) : (
+                          <div
+                            style={{
+                              width: 64,
+                              height: 44,
+                              borderRadius: "0.5rem",
+                              border: "1px solid #e5e7eb",
+                              background: "#ffffff",
+                            }}
+                          />
+                        )}
+                      </button>
                       <p
                         style={{
                           fontSize: "0.9rem",
@@ -330,36 +443,41 @@ function CoursePage({ currentUser }) {
                       </p>
                     </div>
                     <div style={{ display: "flex", gap: "0.4rem" }}>
-                      <button
-                        onClick={() => handleCompleteLesson(lesson.id)}
-                        style={{
-                          fontSize: "0.75rem",
-                          padding: "0.35rem 0.75rem",
-                          borderRadius: "999px",
-                          border: "none",
-                          background: "#059669",
-                          color: "#ecfdf5",
-                          cursor: "pointer",
-                          fontWeight: 600,
-                        }}
-                      >
-                        Mark complete
-                      </button>
-                      <button
-                        onClick={() => openReport(lesson)}
-                        style={{
-                          fontSize: "0.75rem",
-                          padding: "0.35rem 0.75rem",
-                          borderRadius: "999px",
-                          border: "1px solid #e5e7eb",
-                          background: "#ffffff",
-                          color: "#4b5563",
-                          cursor: "pointer",
-                          fontWeight: 500,
-                        }}
-                      >
-                        Report
-                      </button>
+                      {course.is_enrolled && (
+                        <>
+                          <button
+                            onClick={() => handleCompleteLesson(lesson.id)}
+                            disabled={lesson.is_completed}
+                            style={{
+                              fontSize: "0.75rem",
+                              padding: "0.35rem 0.75rem",
+                              borderRadius: "999px",
+                              border: "none",
+                              background: lesson.is_completed ? "#10b981" : "#059669",
+                              color: "#ecfdf5",
+                              cursor: lesson.is_completed ? "default" : "pointer",
+                              fontWeight: 600,
+                            }}
+                          >
+                            {lesson.is_completed ? "Completed" : "Mark complete"}
+                          </button>
+                          <button
+                            onClick={() => openReport(lesson)}
+                            style={{
+                              fontSize: "0.75rem",
+                              padding: "0.35rem 0.75rem",
+                              borderRadius: "999px",
+                              border: "1px solid #e5e7eb",
+                              background: "#ffffff",
+                              color: "#4b5563",
+                              cursor: "pointer",
+                              fontWeight: 500,
+                            }}
+                          >
+                            Report
+                          </button>
+                        </>
+                      )}
                     </div>
                   </li>
                 ))}

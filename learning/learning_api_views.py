@@ -3,6 +3,7 @@ Learning API Views - For student course learning experience
 Handles lessons, quizzes, progress tracking, and certificates
 """
 import json
+import re
 import uuid
 from datetime import date
 from django.contrib.auth.decorators import login_required
@@ -15,6 +16,24 @@ from .models import (
     Course, Lesson, Quiz, Question, AnswerOption,
     QuizAttempt, Enrollment, LessonProgress, Certificate
 )
+
+def _youtube_thumbnail(url):
+    if not url:
+        return None
+    match = re.search(
+        r"(?:youtu\.be\/|youtube\.com(?:\/embed\/|\/v\/|\/watch\?v=|\/watch\?.+&v=))([^&\n?#]+)",
+        url,
+    )
+    if not match:
+        return None
+    return f"https://img.youtube.com/vi/{match.group(1)}/hqdefault.jpg"
+
+def _lesson_thumbnail(lesson):
+    if lesson.thumbnail_url:
+        return lesson.thumbnail_url
+    if lesson.video_source == "youtube":
+        return _youtube_thumbnail(lesson.video_url)
+    return None
 
 
 # ============================================
@@ -63,6 +82,7 @@ def course_lessons(request, slug):
                 "video_url": lesson.video_url,
                 "video_file": lesson.video_file.url if lesson.video_file else None,
                 "video_source": lesson.video_source,
+                "thumbnail_url": _lesson_thumbnail(lesson),
                 "duration_minutes": lesson.duration_minutes,
                 "order": lesson.order,
                 "is_completed": progress.quiz_passed if lesson.quiz_required else progress.is_completed,
@@ -130,6 +150,7 @@ def lesson_detail(request, lesson_id):
                 "video_url": lesson.video_url,
                 "video_file": lesson.video_file.url if lesson.video_file else None,
                 "video_source": lesson.video_source,
+                "thumbnail_url": _lesson_thumbnail(lesson),
                 "duration_minutes": lesson.duration_minutes,
                 "order": lesson.order,
                 "is_completed": progress.is_completed if progress else False,

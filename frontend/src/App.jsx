@@ -14,8 +14,7 @@ import CourseLearningPage from "./pages/CourseLearningPage";
 import BecomeInstructorPage from "./pages/BecomeInstructorPage";
 import ProfilePage from "./pages/ProfilePage";
 import { ToastProvider } from "./components/Toast";
-
-const AUTH_API = "http://localhost:8000/api/auth/";
+import { AUTH_API } from "./config";
 
 function App() {
   const navigate = useNavigate();
@@ -230,176 +229,61 @@ function App() {
 
   return (
     <ToastProvider>
-      <div style={{ minHeight: "100vh", background: "#f3f4f6", display: "flex", flexDirection: "column" }}>
+      <div className="app">
         {/* NAVBAR */}
-        <header
-          style={{
-            width: "100%",
-            borderBottom: "1px solid #e5e7eb",
-            background: "#ffffff",
-          }}
-        >
-          <div
-            style={{
-              maxWidth: 1120,
-              margin: "0 auto",
-              padding: "0.75rem 3rem",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              gap: "1rem",
-            }}
-          >
-            <Link
-              to="/"
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "0.4rem",
-                textDecoration: "none",
-              }}
-            >
-              <div
-                style={{
-                  width: 28,
-                  height: 28,
-                  borderRadius: "0.95rem",
-                  background:
-                    "linear-gradient(135deg,#4f46e5,#f97316)",
-                }}
-              />
-              <span
-                style={{
-                  fontSize: "1rem",
-                  fontWeight: 700,
-                  color: "#111827",
-                }}
-              >
-                SkillForge
-              </span>
+        <header className="nav">
+          <div className="container nav__inner">
+            <Link to="/" className="nav__logo">
+              <span className="logo-mark" />
+              <span>SkillForge</span>
             </Link>
 
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "0.8rem",
-              }}
-            >
-              {currentUser && (
-                <Link
-                  to="/my-learning"
-                  style={{
-                    fontSize: "0.85rem",
-                    padding: "0.35rem 0.8rem",
-                    borderRadius: "999px",
-                    border: "1px solid #e5e7eb",
-                    background: "#f9fafb",
-                    color: "#374151",
-                    textDecoration: "none",
-                    fontWeight: 500,
-                  }}
-                >
-                  My learning
-                </Link>
-              )}
+            <nav className="nav__links">
+              <Link to="/">Explore</Link>
+              <Link to="/my-learning">My learning</Link>
+              <Link to="/become-instructor">Teach</Link>
+            </nav>
 
+            <div className="nav__actions">
               {!currentUser ? (
                 <>
                   <button
                     type="button"
+                    className="btn btn--ghost"
                     onClick={() => navigate("/login")}
-                    style={{
-                      fontSize: "0.85rem",
-                      padding: "0.35rem 0.8rem",
-                      borderRadius: "999px",
-                      border: "none",
-                      background: "transparent",
-                      color: "#4b5563",
-                      cursor: "pointer",
-                    }}
                   >
                     Log in
                   </button>
                   <button
                     type="button"
+                    className="btn btn--primary"
                     onClick={() => navigate("/signup")}
-                    style={{
-                      fontSize: "0.85rem",
-                      padding: "0.4rem 0.9rem",
-                      borderRadius: "999px",
-                      border: "none",
-                      background: "#f97316",
-                      color: "#111827",
-                      cursor: "pointer",
-                      fontWeight: 600,
-                    }}
                   >
                     Get started
                   </button>
                 </>
               ) : (
-                <div style={{ position: "relative" }}>
+                <div className="menu">
                   <button
                     type="button"
+                    className="menu__trigger"
                     onClick={() => setMenuOpen((v) => !v)}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "0.4rem",
-                      padding: "0.35rem 0.7rem",
-                      borderRadius: "999px",
-                      border: "1px solid #e5e7eb",
-                      background: "#ffffff",
-                      cursor: "pointer",
-                    }}
                   >
-                    <span
-                      style={{
-                        width: 26,
-                        height: 26,
-                        borderRadius: "999px",
-                        background: "#4f46e5",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        color: "#eef2ff",
-                        fontSize: "0.8rem",
-                        fontWeight: 600,
-                      }}
-                    >
+                    <span className="menu__avatar">
                       {currentUser.first_name
                         ? currentUser.first_name[0].toUpperCase()
                         : currentUser.email[0].toUpperCase()}
                     </span>
-                    <span
-                      style={{
-                        fontSize: "0.85rem",
-                        color: "#111827",
-                      }}
-                    >
+                    <span className="menu__label">
                       {currentUser.first_name || currentUser.email}
                     </span>
                   </button>
 
                   {menuOpen && (
-                    <div
-                      style={{
-                        position: "absolute",
-                        right: 0,
-                        top: "115%",
-                        background: "#ffffff",
-                        borderRadius: "0.9rem",
-                        border: "1px solid #e5e7eb",
-                        boxShadow: "0 18px 40px rgba(15,23,42,0.18)",
-                        minWidth: 180,
-                        padding: "0.3rem 0.25rem",
-                        zIndex: 30,
-                      }}
-                    >
+                    <div className="menu__dropdown">
                       <button
                         type="button"
-                        style={menuItemStyle}
+                        className="menu__item"
                         onClick={() => {
                           setMenuOpen(false);
                           navigate("/profile");
@@ -409,7 +293,7 @@ function App() {
                       </button>
                       <button
                         type="button"
-                        style={menuItemStyle}
+                        className="menu__item"
                         onClick={() => {
                           setMenuOpen(false);
                           navigate("/my-learning");
@@ -420,7 +304,7 @@ function App() {
                       {currentUser?.is_staff && (
                         <button
                           type="button"
-                          style={menuItemStyle}
+                          className="menu__item"
                           onClick={() => {
                             setMenuOpen(false);
                             navigate("/admin-dashboard");
@@ -432,7 +316,7 @@ function App() {
                       {currentUser?.is_instructor && (
                         <button
                           type="button"
-                          style={menuItemStyle}
+                          className="menu__item"
                           onClick={() => {
                             setMenuOpen(false);
                             navigate("/instructor-dashboard");
@@ -444,7 +328,7 @@ function App() {
                       {!currentUser?.is_instructor && !currentUser?.is_staff && (
                         <button
                           type="button"
-                          style={menuItemStyle}
+                          className="menu__item"
                           onClick={() => {
                             setMenuOpen(false);
                             navigate("/become-instructor");
@@ -455,7 +339,7 @@ function App() {
                       )}
                       <button
                         type="button"
-                        style={menuItemStyle}
+                        className="menu__item"
                         onClick={handleLogout}
                       >
                         Log out
@@ -555,16 +439,5 @@ function App() {
     </ToastProvider>
   );
 }
-
-const menuItemStyle = {
-  width: "100%",
-  padding: "0.45rem 1rem",
-  textAlign: "left",
-  border: "none",
-  background: "transparent",
-  fontSize: "0.85rem",
-  color: "#111827",
-  cursor: "pointer",
-};
 
 export default App;

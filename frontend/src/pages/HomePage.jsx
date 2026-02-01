@@ -1,8 +1,7 @@
 // src/pages/HomePage.jsx
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-
-const API_BASE = "http://localhost:8000/api";
+import { API_BASE } from "../config";
 
 // Sample course data with enhanced fields
 const sampleCourses = [
@@ -56,7 +55,7 @@ const sampleCourses = [
   },
 ];
 
-function HomePage({ onSignupClick, onLoginClick }) {
+function HomePage() {
   const [courses, setCourses] = useState([]);
   const [categories, setCategories] = useState(["All"]);
   const [coursesLoading, setCoursesLoading] = useState(true);
@@ -70,7 +69,7 @@ function HomePage({ onSignupClick, onLoginClick }) {
         const res = await fetch(`${API_BASE}/categories/`);
         const data = await res.json();
         if (res.ok && data.categories && data.categories.length > 0) {
-          setCategories(["All", ...data.categories.map(cat => cat.name)]);
+          setCategories(["All", ...data.categories.map((cat) => cat.name)]);
         }
       } catch (err) {
         console.error("Error fetching categories:", err);
@@ -89,12 +88,10 @@ function HomePage({ onSignupClick, onLoginClick }) {
         if (res.ok && data.courses && data.courses.length > 0) {
           setCourses(data.courses);
         } else {
-          // Use sample data if no courses from backend
           setCourses(sampleCourses);
         }
       } catch (err) {
         console.error(err);
-        // Use sample data on error
         setCourses(sampleCourses);
       } finally {
         setCoursesLoading(false);
@@ -116,471 +113,120 @@ function HomePage({ onSignupClick, onLoginClick }) {
   });
 
   return (
-    <main style={{ flex: 1, background: "#f9fafb" }}>
-      {/* Hero Section */}
-      <section
-        style={{
-          background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-          padding: "4rem 2rem",
-          position: "relative",
-          overflow: "hidden",
-        }}
-      >
-        <div
-          style={{
-            maxWidth: 1120,
-            margin: "0 auto",
-            position: "relative",
-            zIndex: 1,
-          }}
-        >
-          <div style={{ maxWidth: 700, margin: "0 auto", textAlign: "center" }}>
-            <h1
-              style={{
-                fontSize: "3rem",
-                fontWeight: 800,
-                color: "#ffffff",
-                marginBottom: "1.5rem",
-                lineHeight: 1.1,
-              }}
-            >
-              Learn without limits
+    <main>
+      <section className="hero">
+        <div className="container hero__layout">
+          <div>
+            <span className="eyebrow">SkillForge Academy</span>
+            <h1 className="headline">
+              Build real skills with a guided, human-first learning path.
             </h1>
-            <p
-              style={{
-                fontSize: "1.25rem",
-                color: "rgba(255,255,255,0.95)",
-                marginBottom: "2.5rem",
-                lineHeight: 1.6,
-              }}
-            >
-              Start, switch, or advance your career with thousands of courses,
-              Professional Certificates, and degrees from world-class
-              universities and companies.
+            <p className="subhead">
+              Curated courses, instructor-led learning, and a personal roadmap
+              that adapts to your pace. Start free and grow into career-ready
+              mastery.
             </p>
 
-            {/* Search Bar */}
-            <div
-              style={{
-                display: "flex",
-                maxWidth: 600,
-                margin: "0 auto 2rem",
-                background: "#ffffff",
-                borderRadius: "50px",
-                padding: "0.5rem 1rem",
-                boxShadow: "0 10px 40px rgba(0,0,0,0.2)",
-              }}
-            >
+            <div className="searchbar" style={{ marginTop: "1.5rem" }}>
               <input
                 type="text"
-                placeholder="What do you want to learn?"
+                placeholder="Search courses, skills, or instructors"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                style={{
-                  flex: 1,
-                  border: "none",
-                  outline: "none",
-                  fontSize: "1rem",
-                  padding: "0.75rem 1rem",
-                  background: "transparent",
-                }}
               />
-              <button
-                style={{
-                  background: "#667eea",
-                  border: "none",
-                  borderRadius: "50px",
-                  padding: "0.75rem 2rem",
-                  color: "#ffffff",
-                  fontWeight: 600,
-                  cursor: "pointer",
-                  fontSize: "1rem",
-                }}
-              >
-                Search
-              </button>
+              <button className="btn btn--primary">Search</button>
             </div>
 
-            {/* Stats */}
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "center",
-                gap: "3rem",
-                flexWrap: "wrap",
-              }}
-            >
-              <div>
-                <div
-                  style={{
-                    fontSize: "2rem",
-                    fontWeight: 700,
-                    color: "#ffffff",
-                  }}
-                >
-                  10,000+
-                </div>
-                <div style={{ color: "rgba(255,255,255,0.9)", fontSize: "0.9rem" }}>
-                  Learners
-                </div>
+            <div className="stats">
+              <div className="stat">
+                <strong>10,000+</strong>
+                <div className="muted">Learners</div>
               </div>
-              <div>
-                <div
-                  style={{
-                    fontSize: "2rem",
-                    fontWeight: 700,
-                    color: "#ffffff",
-                  }}
-                >
-                  500+
-                </div>
-                <div style={{ color: "rgba(255,255,255,0.9)", fontSize: "0.9rem" }}>
-                  Courses
-                </div>
+              <div className="stat">
+                <strong>500+</strong>
+                <div className="muted">Courses</div>
               </div>
-              <div>
-                <div
-                  style={{
-                    fontSize: "2rem",
-                    fontWeight: 700,
-                    color: "#ffffff",
-                  }}
-                >
-                  50+
-                </div>
-                <div style={{ color: "rgba(255,255,255,0.9)", fontSize: "0.9rem" }}>
-                  Instructors
-                </div>
+              <div className="stat">
+                <strong>95%</strong>
+                <div className="muted">Satisfaction</div>
               </div>
             </div>
           </div>
-        </div>
 
-        {/* Decorative circles */}
-        <div
-          style={{
-            position: "absolute",
-            top: "-50px",
-            right: "-50px",
-            width: "300px",
-            height: "300px",
-            borderRadius: "50%",
-            background: "rgba(255,255,255,0.1)",
-            zIndex: 0,
-          }}
-        />
-        <div
-          style={{
-            position: "absolute",
-            bottom: "-100px",
-            left: "-100px",
-            width: "400px",
-            height: "400px",
-            borderRadius: "50%",
-            background: "rgba(255,255,255,0.05)",
-            zIndex: 0,
-          }}
-        />
-      </section>
-
-      {/* Categories */}
-      <section
-        style={{
-          maxWidth: 1120,
-          margin: "0 auto",
-          padding: "3rem 2rem 1.5rem",
-        }}
-      >
-        <h2
-          style={{
-            fontSize: "1.75rem",
-            fontWeight: 700,
-            color: "#111827",
-            marginBottom: "1.5rem",
-          }}
-        >
-          Explore by category
-        </h2>
-        <div
-          style={{
-            display: "flex",
-            gap: "0.75rem",
-            overflowX: "auto",
-            paddingBottom: "0.5rem",
-            scrollbarWidth: "thin",
-            scrollbarColor: "#cbd5e1 #f1f5f9",
-          }}
-        >
-          {categories.map((cat) => (
-            <button
-              key={cat}
-              onClick={() => setSelectedCategory(cat)}
-              style={{
-                padding: "0.65rem 1.5rem",
-                borderRadius: "50px",
-                border: selectedCategory === cat ? "2px solid #667eea" : "2px solid #e5e7eb",
-                background: selectedCategory === cat ? "#eef2ff" : "#ffffff",
-                color: selectedCategory === cat ? "#667eea" : "#4b5563",
-                fontSize: "0.95rem",
-                fontWeight: selectedCategory === cat ? 600 : 500,
-                cursor: "pointer",
-                transition: "all 0.2s ease",
-                whiteSpace: "nowrap",
-                flexShrink: 0,
-              }}
-              onMouseEnter={(e) => {
-                if (selectedCategory !== cat) {
-                  e.target.style.borderColor = "#667eea";
-                  e.target.style.background = "#f9fafb";
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (selectedCategory !== cat) {
-                  e.target.style.borderColor = "#e5e7eb";
-                  e.target.style.background = "#ffffff";
-                }
-              }}
-            >
-              {cat}
-            </button>
-          ))}
+          <div className="hero__card">
+            <span className="pill">New: AI-powered roadmaps</span>
+            <h3 style={{ marginTop: "1.2rem", fontSize: "1.4rem" }}>
+              A learning plan built around your goals.
+            </h3>
+            <p className="muted" style={{ marginTop: "0.6rem" }}>
+              SkillForge evaluates your current level, maps real-world outcomes,
+              and keeps you progressing with quizzes and milestones.
+            </p>
+            <div style={{ display: "grid", gap: "0.6rem", marginTop: "1.2rem" }}>
+              <span className="pill">Weekly pacing recommendations</span>
+              <span className="pill">Instructor-reviewed content</span>
+              <span className="pill">Certificates with verification</span>
+            </div>
+          </div>
         </div>
       </section>
 
-      {/* Courses Grid */}
-      <section
-        style={{
-          maxWidth: 1120,
-          margin: "0 auto",
-          padding: "2rem 2rem 4rem",
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginBottom: "2rem",
-          }}
-        >
-          <h2
-            style={{
-              fontSize: "1.75rem",
-              fontWeight: 700,
-              color: "#111827",
-            }}
-          >
-            {selectedCategory === "All" ? "Popular courses" : selectedCategory}
-          </h2>
-          <span style={{ color: "#6b7280", fontSize: "0.95rem" }}>
-            {filteredCourses.length} courses
-          </span>
-        </div>
+      <section className="section section--muted">
+        <div className="container">
+          <div style={{ marginBottom: "2rem" }}>
+            <span className="eyebrow">Explore</span>
+            <h2 className="headline" style={{ fontSize: "2.4rem" }}>
+              Browse standout courses
+            </h2>
+            <p className="subhead">
+              Discover in-demand topics, structured lessons, and hands-on
+              projects from experienced instructors.
+            </p>
+          </div>
 
-        {coursesLoading && (
-          <p style={{ fontSize: "1rem", color: "#6b7280" }}>Loading courses...</p>
-        )}
+          <div className="filters">
+            {categories.map((category) => (
+              <button
+                key={category}
+                onClick={() => setSelectedCategory(category)}
+                className={`filter-pill ${
+                  selectedCategory === category ? "filter-pill--active" : ""
+                }`}
+              >
+                {category}
+              </button>
+            ))}
+          </div>
 
-        {!coursesLoading && filteredCourses.length === 0 && (
-          <p style={{ fontSize: "1rem", color: "#6b7280" }}>
-            No courses found. Try a different category or search term.
-          </p>
-        )}
-
-        <div
-          style={{
-            display: "grid",
-            gap: "1.5rem",
-            gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
-          }}
-        >
-          {filteredCourses.map((course) => (
-            <CourseCard key={course.id} course={course} />
-          ))}
+          {coursesLoading ? (
+            <p className="muted" style={{ textAlign: "center", marginTop: "2rem" }}>
+              Loading courses...
+            </p>
+          ) : (
+            <div className="course-grid" style={{ marginTop: "2rem" }}>
+              {filteredCourses.map((course) => (
+                <div className="course-card" key={course.id}>
+                  <div className="course-card__meta">
+                    <span className="chip">{course.level || "All levels"}</span>
+                    <span>⭐ {course.rating || "4.8"}</span>
+                  </div>
+                  <div className="course-card__title">{course.title}</div>
+                  <p className="muted" style={{ fontSize: "0.9rem" }}>
+                    {course.description}
+                  </p>
+                  <div className="course-card__actions">
+                    <span className="pill">{course.price || "Free"}</span>
+                    <Link to={`/courses/${course.slug}`} className="btn btn--ghost">
+                      View course
+                    </Link>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </section>
     </main>
-  );
-}
-
-// Course Card Component
-function CourseCard({ course }) {
-  const [isHovered, setIsHovered] = useState(false);
-
-  // Generate a gradient based on category
-  const getCategoryGradient = (category) => {
-    const gradients = {
-      "Web Development": "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-      "Data Science": "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)",
-      "Design": "linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)",
-      "AI & ML": "linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)",
-      "Cloud & DevOps": "linear-gradient(135deg, #fa709a 0%, #fee140 100%)",
-      "Business": "linear-gradient(135deg, #30cfd0 0%, #330867 100%)",
-    };
-    return gradients[category] || "linear-gradient(135deg, #667eea 0%, #764ba2 100%)";
-  };
-
-  return (
-    <Link
-      to={`/courses/${course.slug}`}
-      style={{
-        display: "block",
-        textDecoration: "none",
-        borderRadius: "1rem",
-        overflow: "hidden",
-        background: "#ffffff",
-        border: "1px solid #e5e7eb",
-        boxShadow: isHovered
-          ? "0 20px 50px rgba(0,0,0,0.15)"
-          : "0 4px 15px rgba(0,0,0,0.08)",
-        transform: isHovered ? "translateY(-8px)" : "translateY(0)",
-        transition: "all 0.3s ease",
-      }}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-    >
-      {/* Course Image */}
-      <div
-        style={{
-          height: "180px",
-          background: getCategoryGradient(course.category),
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          position: "relative",
-        }}
-      >
-        <div
-          style={{
-            fontSize: "3rem",
-            color: "rgba(255,255,255,0.9)",
-            fontWeight: 700,
-          }}
-        >
-          {course.title.charAt(0)}
-        </div>
-        {course.price === "Free" && (
-          <div
-            style={{
-              position: "absolute",
-              top: "1rem",
-              right: "1rem",
-              background: "#10b981",
-              color: "#ffffff",
-              padding: "0.35rem 0.75rem",
-              borderRadius: "50px",
-              fontSize: "0.75rem",
-              fontWeight: 600,
-            }}
-          >
-            FREE
-          </div>
-        )}
-      </div>
-
-      {/* Course Info */}
-      <div style={{ padding: "1.25rem" }}>
-        <div
-          style={{
-            fontSize: "0.75rem",
-            color: "#667eea",
-            fontWeight: 600,
-            textTransform: "uppercase",
-            marginBottom: "0.5rem",
-            letterSpacing: "0.05em",
-          }}
-        >
-          {course.category}
-        </div>
-
-        <h3
-          style={{
-            fontSize: "1.1rem",
-            fontWeight: 700,
-            color: "#111827",
-            marginBottom: "0.5rem",
-            lineHeight: 1.3,
-          }}
-        >
-          {course.title}
-        </h3>
-
-        <p
-          style={{
-            fontSize: "0.875rem",
-            color: "#6b7280",
-            marginBottom: "1rem",
-            lineHeight: 1.5,
-          }}
-        >
-          {course.description}
-        </p>
-
-        {/* Instructor */}
-        {course.instructor && (
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "0.5rem",
-              marginBottom: "0.75rem",
-            }}
-          >
-            <div
-              style={{
-                width: "28px",
-                height: "28px",
-                borderRadius: "50%",
-                background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                color: "#ffffff",
-                fontSize: "0.75rem",
-                fontWeight: 600,
-              }}
-            >
-              {course.instructor.charAt(0)}
-            </div>
-            <span style={{ fontSize: "0.85rem", color: "#4b5563" }}>
-              {course.instructor}
-            </span>
-          </div>
-        )}
-
-        {/* Rating and Students */}
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            paddingTop: "0.75rem",
-            borderTop: "1px solid #f3f4f6",
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: "0.35rem" }}>
-            <span style={{ color: "#fbbf24", fontSize: "1rem" }}>★</span>
-            <span style={{ fontSize: "0.875rem", fontWeight: 600, color: "#111827" }}>
-              {course.rating || "4.5"}
-            </span>
-            <span style={{ fontSize: "0.75rem", color: "#9ca3af" }}>
-              ({course.students?.toLocaleString() || "1,234"})
-            </span>
-          </div>
-          {course.price && course.price !== "Free" && (
-            <span
-              style={{
-                fontSize: "1rem",
-                fontWeight: 700,
-                color: "#111827",
-              }}
-            >
-              {course.price}
-            </span>
-          )}
-        </div>
-      </div>
-    </Link>
   );
 }
 

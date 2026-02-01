@@ -2,8 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import LearningStreakHeatmap from "../components/LearningStreakHeatmap";
-
-const API_BASE = "http://localhost:8000/api";
+import { API_BASE } from "../config";
 
 function ProfilePage({ currentUser }) {
     const { userId } = useParams();
