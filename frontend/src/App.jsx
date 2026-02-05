@@ -3,18 +3,20 @@ import { useEffect, useState } from "react";
 import { Routes, Route, Link, useNavigate } from "react-router-dom";
 
 import HomePage from "./pages/HomePage";
+import FeedPage from "./pages/FeedPage";
 import LoginPage from "./pages/LoginPage";
 import SignupPage from "./pages/SignupPage";
 import VerifyPage from "./pages/VerifyPage";
 import CoursePage from "./pages/CoursePage";
 import MyLearningPage from "./pages/MyLearningPage";
+import RoadmapPage from "./pages/RoadmapPage";
 import AdminDashboard from "./pages/AdminDashboard";
 import InstructorDashboard from "./pages/InstructorDashboard";
 import CourseLearningPage from "./pages/CourseLearningPage";
 import BecomeInstructorPage from "./pages/BecomeInstructorPage";
 import ProfilePage from "./pages/ProfilePage";
 import { ToastProvider } from "./components/Toast";
-import { AUTH_API } from "./config";
+import { AUTH_API, API_BASE } from "./config";
 
 function App() {
   const navigate = useNavigate();
@@ -35,6 +37,10 @@ function App() {
 
   // navbar dropdown (optional)
   const [menuOpen, setMenuOpen] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [notifOpen, setNotifOpen] = useState(false);
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   // Check session on first load
   useEffect(() => {
@@ -60,6 +66,46 @@ function App() {
 
     fetchMe();
   }, []);
+
+  useEffect(() => {
+    if (!currentUser) {
+      setNotifications([]);
+      setUnreadCount(0);
+      return;
+    }
+    async function fetchNotifications() {
+      try {
+        const res = await fetch(`${API_BASE}/social/notifications/`, {
+          credentials: "include",
+        });
+        const data = await res.json();
+        if (res.ok) {
+          setNotifications(data.notifications || []);
+          setUnreadCount(data.unread_count || 0);
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    }
+    fetchNotifications();
+  }, [currentUser]);
+
+  const openNotifications = async () => {
+    const next = !notifOpen;
+    setNotifOpen(next);
+    if (next && unreadCount > 0) {
+      try {
+        await fetch(`${API_BASE}/social/notifications/mark-read/`, {
+          method: "POST",
+          credentials: "include",
+        });
+        setUnreadCount(0);
+        setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
+      } catch (err) {
+        console.error(err);
+      }
+    }
+  };
 
   const resetAuthForm = () => {
     setFirstName("");
@@ -240,11 +286,74 @@ function App() {
 
             <nav className="nav__links">
               <Link to="/">Explore</Link>
+              <Link to="/feed">Feed</Link>
               <Link to="/my-learning">My learning</Link>
+              <Link to="/roadmap">Roadmap</Link>
               <Link to="/become-instructor">Teach</Link>
             </nav>
 
             <div className="nav__actions">
+              <button
+                type="button"
+                className="nav__toggle"
+                onClick={() => setMobileNavOpen((v) => !v)}
+                aria-label="Open navigation menu"
+              >
+                ☰
+              </button>
+              {currentUser && (
+                <div className="nav__notifications">
+                  <button type="button" className="nav__bell" onClick={openNotifications}>
+                    <svg
+                      className="nav__bell-icon"
+                      viewBox="0 0 24 24"
+                      aria-hidden="true"
+                    >
+                      <path
+                        d="M12 22a2.5 2.5 0 0 0 2.45-2h-4.9A2.5 2.5 0 0 0 12 22Zm7-6V11a7 7 0 0 0-14 0v5l-2 2v1h18v-1l-2-2Z"
+                        fill="currentColor"
+                      />
+                    </svg>
+                    {unreadCount > 0 && <span className="nav__badge">{unreadCount}</span>}
+                  </button>
+                  {notifOpen && (
+                    <div className="nav__notif-dropdown">
+                      <div className="nav__notif-title">Notifications</div>
+                      {notifications.length === 0 ? (
+                        <div className="nav__notif-empty">No notifications yet.</div>
+                      ) : (
+                        notifications.map((n) => (
+                          <button
+                            type="button"
+                            key={n.id}
+                            className={`nav__notif-item ${n.is_read ? "" : "unread"}`}
+                            onClick={() => {
+                              setNotifOpen(false);
+                              navigate(`/feed?post=${n.post_id}`);
+                            }}
+                          >
+                            <div className="nav__notif-actor">
+                              {n.actors
+                                ? n.actors.slice(0, 2).map((a) => a.name).join(", ")
+                                : n.actor.name}
+                              {n.count && n.count > 2 && ` and ${n.count - 2} others`}
+                            </div>
+                            <div className="nav__notif-text">
+                              {n.action === "like" && "liked your post."}
+                              {n.action === "comment" && "commented on your post."}
+                              {n.action === "repost" && "reposted your post."}
+                            </div>
+                            {n.post_excerpt && (
+                              <div className="nav__notif-post">Post: {n.post_excerpt}</div>
+                            )}
+                            {n.comment_text && <div className="nav__notif-preview">“{n.comment_text}”</div>}
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
               {!currentUser ? (
                 <>
                   <button
@@ -301,6 +410,26 @@ function App() {
                       >
                         My learning
                       </button>
+                      <button
+                        type="button"
+                        className="menu__item"
+                        onClick={() => {
+                          setMenuOpen(false);
+                          navigate("/feed");
+                        }}
+                      >
+                        Feed
+                      </button>
+                      <button
+                        type="button"
+                        className="menu__item"
+                        onClick={() => {
+                          setMenuOpen(false);
+                          navigate("/roadmap");
+                        }}
+                      >
+                        Roadmap
+                      </button>
                       {currentUser?.is_staff && (
                         <button
                           type="button"
@@ -350,6 +479,70 @@ function App() {
               )}
             </div>
           </div>
+          {mobileNavOpen && (
+            <div className="nav__drawer" onClick={() => setMobileNavOpen(false)}>
+              <div className="nav__drawer-panel" onClick={(e) => e.stopPropagation()}>
+                <div className="nav__drawer-header">
+                  <div className="nav__mobile-user">
+                    <span className="nav__mobile-avatar">
+                      {currentUser?.first_name
+                        ? currentUser.first_name[0].toUpperCase()
+                        : currentUser?.email?.[0]?.toUpperCase() || "U"}
+                    </span>
+                    <div>
+                      <div className="nav__mobile-name">
+                        {currentUser?.first_name || currentUser?.email || "Guest"}
+                      </div>
+                      {currentUser?.email && (
+                        <div className="nav__mobile-email">{currentUser.email}</div>
+                      )}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    className="nav__drawer-close"
+                    onClick={() => setMobileNavOpen(false)}
+                  >
+                    ✕
+                  </button>
+                </div>
+                <div className="nav__drawer-links">
+                  <button type="button" onClick={() => { setMobileNavOpen(false); navigate("/profile"); }}>
+                    My Profile
+                  </button>
+                  <button type="button" onClick={() => { setMobileNavOpen(false); navigate("/"); }}>
+                    Explore
+                  </button>
+                  <button type="button" onClick={() => { setMobileNavOpen(false); navigate("/feed"); }}>
+                    Feed
+                  </button>
+                  <button type="button" onClick={() => { setMobileNavOpen(false); navigate("/my-learning"); }}>
+                    My Learning
+                  </button>
+                  <button type="button" onClick={() => { setMobileNavOpen(false); navigate("/roadmap"); }}>
+                    Roadmap
+                  </button>
+                  <button type="button" onClick={() => { setMobileNavOpen(false); navigate("/become-instructor"); }}>
+                    Teach
+                  </button>
+                  {currentUser ? (
+                    <button className="danger" type="button" onClick={() => { setMobileNavOpen(false); handleLogout(); }}>
+                      Logout
+                    </button>
+                  ) : (
+                    <>
+                      <button type="button" onClick={() => { setMobileNavOpen(false); navigate("/login"); }}>
+                        Log in
+                      </button>
+                      <button type="button" onClick={() => { setMobileNavOpen(false); navigate("/signup"); }}>
+                        Get started
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
         </header>
 
         {/* PAGE CONTENT */}
@@ -362,6 +555,10 @@ function App() {
                 onLoginClick={() => navigate("/login")}
               />
             }
+          />
+          <Route
+            path="/feed"
+            element={<FeedPage currentUser={currentUser} />}
           />
           <Route
             path="/login"
@@ -409,6 +606,10 @@ function App() {
           <Route
             path="/my-learning"
             element={<MyLearningPage currentUser={currentUser} />}
+          />
+          <Route
+            path="/roadmap"
+            element={<RoadmapPage currentUser={currentUser} />}
           />
           <Route
             path="/admin-dashboard"

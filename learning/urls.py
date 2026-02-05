@@ -3,6 +3,8 @@ from . import views
 from . import admin_api_views
 from . import instructor_api_views
 from . import learning_api_views
+from . import roadmap_api_views
+from . import social_api_views
 
 urlpatterns = [
     # Existing course views
@@ -73,4 +75,27 @@ urlpatterns = [
     # Certificate APIs
     path("learning/certificates/<str:certificate_id>/", learning_api_views.get_certificate, name="get_certificate"),
     path("learning/courses/<slug:slug>/certificate/", learning_api_views.course_certificate, name="course_certificate"),
+
+    # Roadmap APIs
+    path("learning/roadmaps/roles/", roadmap_api_views.roadmap_roles, name="roadmap_roles"),
+    path("learning/roadmaps/slots/", roadmap_api_views.roadmap_slots, name="roadmap_slots"),
+    path("learning/roadmaps/slots/<int:slot_id>/", roadmap_api_views.roadmap_slot_detail, name="roadmap_slot_detail"),
+    path("learning/roadmaps/slots/<int:slot_id>/generate/", roadmap_api_views.roadmap_generate, name="roadmap_generate"),
+
+    # ============================================
+    # SOCIAL FEED APIs
+    # ============================================
+    path("social/feed/", social_api_views.feed_list, name="social_feed"),
+    path("social/posts/", social_api_views.create_post, name="social_create_post"),
+    path("social/posts/<int:post_id>/", social_api_views.delete_post, name="social_delete_post"),
+    path("social/posts/<int:post_id>/like/", social_api_views.toggle_like, name="social_like"),
+    path("social/posts/<int:post_id>/repost/", social_api_views.toggle_repost, name="social_repost"),
+    path("social/posts/<int:post_id>/comments/", social_api_views.post_comments, name="social_comments"),
+    path("social/posts/<int:post_id>/report/", social_api_views.report_post, name="social_report"),
+    path("social/follow/<int:user_id>/", social_api_views.toggle_follow, name="social_follow"),
+    path("social/following/", social_api_views.list_following, name="social_following"),
+    path("social/follow/status/<int:user_id>/", social_api_views.follow_status, name="social_follow_status"),
+    path("social/link-preview/", social_api_views.link_preview, name="social_link_preview"),
+    path("social/notifications/", social_api_views.list_notifications, name="social_notifications"),
+    path("social/notifications/mark-read/", social_api_views.mark_notifications_read, name="social_notifications_mark_read"),
 ]

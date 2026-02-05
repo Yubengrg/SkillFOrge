@@ -17,6 +17,7 @@ function InstructorDashboard({ currentUser }) {
   const [categories, setCategories] = useState([]);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [managingLessons, setManagingLessons] = useState(null);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const [formData, setFormData] = useState({
     title: "",
@@ -33,6 +34,13 @@ function InstructorDashboard({ currentUser }) {
       return;
     }
   }, [currentUser, navigate]);
+
+  useEffect(() => {
+    document.body.classList.add("dashboard-page");
+    return () => {
+      document.body.classList.remove("dashboard-page");
+    };
+  }, []);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -145,6 +153,19 @@ function InstructorDashboard({ currentUser }) {
     }
   };
 
+  const handleLogout = async () => {
+    try {
+      await fetch(`${API_BASE}/auth/logout/`, {
+        method: "POST",
+        credentials: "include",
+      });
+    } catch (err) {
+      console.error(err);
+    } finally {
+      navigate("/");
+    }
+  };
+
   if (loading) {
     return (
       <div style={{ padding: "2rem", textAlign: "center" }}>
@@ -156,9 +177,19 @@ function InstructorDashboard({ currentUser }) {
   return (
     <div className="dash-shell">
       <aside className="dash-sidebar">
-        <div className="dash-brand">
-          <span className="dash-brand__dot" />
-          Instructor Studio
+        <div className="dash-sidebar__top">
+          <div className="dash-brand">
+            <span className="dash-brand__dot" />
+            Instructor Studio
+          </div>
+          <button
+            type="button"
+            className="dash-hamburger"
+            onClick={() => setMobileMenuOpen((v) => !v)}
+            aria-label="Open menu"
+          >
+            ☰
+          </button>
         </div>
         <nav className="dash-nav">
           <button className={activeTab === "overview" ? "active" : ""} onClick={() => setActiveTab("overview")}>
@@ -171,6 +202,62 @@ function InstructorDashboard({ currentUser }) {
             ← Back to site
           </button>
         </nav>
+        {mobileMenuOpen && (
+          <div className="dash-mobile-menu">
+            <div className="dash-mobile-user">
+              <span className="dash-mobile-avatar">
+                {currentUser?.first_name
+                  ? currentUser.first_name[0].toUpperCase()
+                  : currentUser?.email?.[0]?.toUpperCase() || "U"}
+              </span>
+              <div>
+                <div className="dash-mobile-name">
+                  {currentUser?.first_name || currentUser?.email || "User"}
+                </div>
+                <div className="dash-mobile-email">{currentUser?.email}</div>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setMobileMenuOpen(false);
+                navigate("/profile");
+              }}
+            >
+              My Profile
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setMobileMenuOpen(false);
+                navigate("/");
+              }}
+            >
+              Explore
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setMobileMenuOpen(false);
+                navigate("/my-learning");
+              }}
+            >
+              My Learning
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setMobileMenuOpen(false);
+                navigate("/become-instructor");
+              }}
+            >
+              Teach
+            </button>
+            <button type="button" onClick={handleLogout}>
+              Logout
+            </button>
+          </div>
+        )}
       </aside>
 
       <main className="dash-main">

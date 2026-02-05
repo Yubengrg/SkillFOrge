@@ -665,3 +665,158 @@ class Report(models.Model):
     def __str__(self):
         target = self.lesson or self.course
         return f"Report #{self.id} on {target or 'N/A'}"
+
+
+# ============================================
+# ROADMAPS (Role-based learning plans)
+# ============================================
+class RoadmapSlot(models.Model):
+    """User-created roadmap slot for a desired role."""
+
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="roadmap_slots",
+    )
+    name = models.CharField(max_length=120)
+    role = models.CharField(max_length=120)
+    track = models.CharField(max_length=120, blank=True, default="")
+    roadmap_data = models.JSONField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.user.email} - {self.name} ({self.role})"
+
+
+class RoadmapCertificate(models.Model):
+    """Certificate for completing a roadmap role."""
+
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="roadmap_certificates",
+    )
+    slot = models.OneToOneField(
+        RoadmapSlot,
+        on_delete=models.CASCADE,
+        related_name="certificate",
+    )
+    role = models.CharField(max_length=120)
+    certificate_id = models.CharField(max_length=100, unique=True)
+    issued_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-issued_at"]
+
+    def __str__(self):
+        return f"{self.user.email} - {self.role} roadmap certificate"
+
+
+# ============================================
+# SOCIAL FEED MODELS
+# ============================================
+
+
+class Follow(models.Model):
+    """Follower relationship for social feed."""
+    follower = models.ForeignKey(User, on_delete=models.CASCADE, related_name="following")
+    following = models.ForeignKey(User, on_delete=models.CASCADE, related_name="followers")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ("follower", "following")
+
+    def __str__(self):
+        return f"{self.follower.email} follows {self.following.email}"
+
+
+class Post(models.Model):
+    """Social feed post."""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="posts")
+    content = models.TextField(blank=True)
+    link_url = models.URLField(blank=True)
+    link_title = models.CharField(max_length=255, blank=True)
+    link_description = models.TextField(blank=True)
+    link_image_url = models.URLField(blank=True)
+    repost_of = models.ForeignKey(
+        "self",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="reposts",
+    )
+    is_deleted = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"Post {self.id} by {self.user.email}"
+
+
+class PostMedia(models.Model):
+    """Media attached to a post."""
+    MEDIA_TYPES = [
+        ("image", "Image"),
+        ("video", "Video"),
+    ]
+    post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name="media")
+    media_type = models.CharField(max_length=10, choices=MEDIA_TYPES)
+    file = models.FileField(upload_to="post_media/")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.media_type} for post {self.post_id}"
+
+
+class PostLike(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="post_likes")
+    post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name="likes")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ("user", "post")
+
+
+class PostComment(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="post_comments")
+    post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name="comments")
+    content = models.TextField()
+    is_deleted = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["created_at"]
+
+
+class PostReport(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="post_reports")
+    post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name="reports")
+    reason = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    resolved = models.BooleanField(default=False)
+
+
+class Notification(models.Model):
+    """Simple in-app notifications for social actions."""
+    ACTIONS = [
+        ("like", "Like"),
+        ("comment", "Comment"),
+        ("repost", "Repost"),
+    ]
+    recipient = models.ForeignKey(User, on_delete=models.CASCADE, related_name="notifications")
+    actor = models.ForeignKey(User, on_delete=models.CASCADE, related_name="notifications_sent")
+    action = models.CharField(max_length=20, choices=ACTIONS)
+    post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name="notifications")
+    comment_text = models.TextField(blank=True)
+    is_read = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]

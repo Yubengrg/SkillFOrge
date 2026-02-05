@@ -114,9 +114,9 @@ if DB_ENGINE == "mysql":
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.mysql",
-            "NAME": os.getenv("DB_NAME", "skillforge_db"),
-            "USER": os.getenv("DB_USER", "admin"),
-            "PASSWORD": os.getenv("DB_PASSWORD", "admin"),
+            "NAME": os.getenv("DB_NAME", "skillforge_db"), #////////////////////////////////////////
+            "USER": os.getenv("DB_USER", "admin"),         #////////////////////////////////////////
+            "PASSWORD": os.getenv("DB_PASSWORD", "admin"), #////////////////////////////////////////
             "HOST": os.getenv("DB_HOST", "127.0.0.1"),
             "PORT": os.getenv("DB_PORT", "3306"),
             "OPTIONS": {
