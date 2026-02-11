@@ -16,6 +16,7 @@ function CoursePage({ currentUser }) {
   const [reportingLesson, setReportingLesson] = useState(null);
   const [reportMessage, setReportMessage] = useState("");
   const [reportSubmitting, setReportSubmitting] = useState(false);
+  const [khaltiKey, setKhaltiKey] = useState("");
 
   // Load course details (with modules & lessons)
   useEffect(() => {
@@ -41,6 +42,23 @@ function CoursePage({ currentUser }) {
 
     fetchCourse();
   }, [slug]);
+
+  useEffect(() => {
+    async function fetchKhaltiKey() {
+      try {
+        const res = await fetch(`${API_BASE}/payments/khalti/public-key/`, {
+          credentials: "include",
+        });
+        const data = await res.json();
+        if (res.ok) {
+          setKhaltiKey(data.public_key || "");
+        }
+      } catch (err) {
+        console.error("Failed to load Khalti key", err);
+      }
+    }
+    fetchKhaltiKey();
+  }, []);
 
   const handleEnroll = async () => {
     if (!currentUser) {
@@ -71,6 +89,66 @@ function CoursePage({ currentUser }) {
     } finally {
       setEnrolling(false);
     }
+  };
+
+  const handleKhaltiPay = async () => {
+    if (!currentUser) {
+      navigate("/login");
+      return;
+    }
+    if (!course) return;
+    if (!khaltiKey) {
+      setError("Khalti key not configured.");
+      return;
+    }
+    if (!window.KhaltiCheckout) {
+      setError("Khalti checkout not loaded.");
+      return;
+    }
+
+    const amount = (course.price_npr || 0) * 100;
+    const checkout = new window.KhaltiCheckout({
+      publicKey: khaltiKey,
+      productIdentity: String(course.id),
+      productName: course.title,
+      productUrl: window.location.href,
+      eventHandler: {
+        onSuccess: async (payload) => {
+          try {
+            setEnrolling(true);
+            const res = await fetch(`${API_BASE}/payments/khalti/verify/`, {
+              method: "POST",
+              credentials: "include",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                token: payload.token,
+                amount: payload.amount,
+                course_id: course.id,
+              }),
+            });
+            const data = await res.json();
+            if (!res.ok) {
+              throw new Error(data.error || "Payment verification failed");
+            }
+            setCourse((prev) => (prev ? { ...prev, is_enrolled: true } : prev));
+            setMessage("Payment successful. You are enrolled!");
+          } catch (err) {
+            console.error(err);
+            setError(err.message || "Payment verification failed");
+          } finally {
+            setEnrolling(false);
+          }
+        },
+        onError: (err) => {
+          console.error(err);
+          setError("Payment failed. Please try again.");
+        },
+        onClose: () => {},
+      },
+      paymentPreference: ["KHALTI", "EBANKING", "MOBILE_BANKING", "CONNECT_IPS", "SCT"],
+    });
+
+    checkout.show({ amount });
   };
 
   const handleCompleteLesson = async (lessonId) => {
@@ -268,8 +346,20 @@ function CoursePage({ currentUser }) {
           >
             Level: {course.level}
           </span>
+          <span
+            style={{
+              fontSize: "0.75rem",
+              padding: "0.35rem 0.75rem",
+              borderRadius: "999px",
+              background: "#eef2ff",
+              color: "#3730a3",
+              alignSelf: "flex-start",
+            }}
+          >
+            {course.price_npr > 0 ? `Price: NPR ${course.price_npr}` : "Free"}
+          </span>
           <button
-            onClick={handleEnroll}
+            onClick={course.price_npr > 0 ? handleKhaltiPay : handleEnroll}
             disabled={enrolling || course.is_enrolled}
             style={primaryButtonStyle}
           >
@@ -277,7 +367,9 @@ function CoursePage({ currentUser }) {
               ? "Enrolling..."
               : course.is_enrolled
                 ? "Enrolled"
-                : "Enroll in course"}
+                : course.price_npr > 0
+                  ? `Pay NPR ${course.price_npr}`
+                  : "Enroll in course"}
           </button>
           {course.is_enrolled && (
             <button

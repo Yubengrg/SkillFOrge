@@ -18,6 +18,8 @@ from .models import (
     AnswerOption,
     QuizAttempt,
     Enrollment,
+    Payment,
+    AdminActionLog,
     LessonProgress,
     Certificate,
     AIRoadmap,
@@ -96,6 +98,7 @@ class CourseAdmin(admin.ModelAdmin):
         "instructor",
         "category",
         "level",
+        "price_npr",
         "is_published",
         "is_approved",
         "enrollment_count",
@@ -298,6 +301,39 @@ class EnrollmentAdmin(admin.ModelAdmin):
     search_fields = ("user__email", "course__title")
     autocomplete_fields = ("user", "course")
     ordering = ("-started_at",)
+
+
+# ============================================
+# PAYMENT ADMIN
+# ============================================
+@admin.register(Payment)
+class PaymentAdmin(admin.ModelAdmin):
+    list_display = (
+        "user",
+        "course",
+        "amount",
+        "currency",
+        "status",
+        "provider",
+        "paid_at",
+        "created_at",
+    )
+    list_filter = ("status", "provider", "currency", "created_at")
+    search_fields = ("user__email", "course__title", "provider_reference")
+    autocomplete_fields = ("user", "course", "enrollment")
+    ordering = ("-created_at",)
+
+
+# ============================================
+# ADMIN ACTION LOG
+# ============================================
+@admin.register(AdminActionLog)
+class AdminActionLogAdmin(admin.ModelAdmin):
+    list_display = ("admin_user", "target_user", "action", "created_at")
+    list_filter = ("action", "created_at")
+    search_fields = ("admin_user__email", "target_user__email", "action")
+    autocomplete_fields = ("admin_user", "target_user")
+    ordering = ("-created_at",)
 
 
 # ============================================

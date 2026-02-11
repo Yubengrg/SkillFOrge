@@ -211,11 +211,13 @@ function HomePage() {
                     <span>⭐ {course.rating || "4.8"}</span>
                   </div>
                   <div className="course-card__title">{course.title}</div>
-                  <p className="muted" style={{ fontSize: "0.9rem" }}>
+                  <p className="muted course-card__desc" style={{ fontSize: "0.9rem" }}>
                     {course.description}
                   </p>
                   <div className="course-card__actions">
-                    <span className="pill">{course.price || "Free"}</span>
+                    <span className="pill">
+                      {course.price_npr > 0 ? `NPR ${course.price_npr}` : "Free"}
+                    </span>
                     <Link to={`/courses/${course.slug}`} className="btn btn--ghost">
                       View course
                     </Link>

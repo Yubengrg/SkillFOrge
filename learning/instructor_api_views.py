@@ -5,15 +5,16 @@ from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.csrf import csrf_exempt
-from django.db.models import Count, Avg
+from django.db.models import Count, Avg, Prefetch, Q
 from django.db.models.functions import TruncDate
 from django.utils import timezone
+from django.conf import settings
 from datetime import timedelta
 import json
 
 from .models import (
     InstructorProfile, Course, Lesson, Enrollment,
-    Category, LessonProgress, QuizAttempt, Quiz
+    Category, LessonProgress, QuizAttempt, Quiz, Payment, Certificate
 )
 
 
@@ -134,6 +135,7 @@ def instructor_overview(request):
             "level": course.level,
             "is_published": course.is_published,
             "is_approved": course.is_approved,
+            "price_npr": course.price_npr,
             "lesson_count": course.lessons.count(),
             "enrollments": total_enrollments,
             "completion_rate": round(completion_rate, 1),
@@ -184,6 +186,7 @@ def instructor_courses(request):
         'level': course.level,
         'is_published': course.is_published,
         'is_approved': course.is_approved,
+        'price_npr': course.price_npr,
         'lesson_count': course.lessons.count(),
         'enrollment_count': course.enrollments.count(),
         'created_at': course.created_at.isoformat(),
@@ -223,6 +226,7 @@ def create_course(request):
             level=data.get('level', 'beginner'),
             learning_objectives=data.get('learning_objectives', []),
             estimated_duration_hours=data.get('estimated_duration_hours', 0),
+            price_npr=int(data.get('price_npr', 0) or 0),
             is_published=False,  # Not published until approved
             is_approved=False  # Needs admin approval
         )
@@ -270,6 +274,8 @@ def update_course(request, course_id):
             course.learning_objectives = data['learning_objectives']
         if 'estimated_duration_hours' in data:
             course.estimated_duration_hours = data['estimated_duration_hours']
+        if 'price_npr' in data:
+            course.price_npr = int(data.get('price_npr') or 0)
         
         # If course was previously approved and is being edited, mark as needing re-approval
         if course.is_approved:
@@ -319,8 +325,21 @@ def delete_course(request, course_id):
 @require_http_methods(["POST"])
 def add_lesson(request, course_id):
     """Add a lesson to a course (supports both URL and file upload)"""
-    
+
     try:
+        def _parse_int(value, default=0):
+            if value is None:
+                return default
+            if isinstance(value, int):
+                return value
+            text = str(value).strip()
+            if not text:
+                return default
+            try:
+                return int(text)
+            except ValueError:
+                return default
+
         instructor = request.user.instructor_profile
         course = Course.objects.get(id=course_id, instructor=instructor)
         
@@ -335,7 +354,6 @@ def add_lesson(request, course_id):
             # Validate file if present
             if video_file:
                 import os
-                from django.conf import settings
                 
                 # Check file size
                 if video_file.size > settings.MAX_VIDEO_FILE_SIZE:
@@ -379,7 +397,7 @@ def add_lesson(request, course_id):
             video_file=video_file,
             video_source=video_source,
             video_transcript=data.get('video_transcript', ''),
-            duration_minutes=int(data.get('duration_minutes', 0)),
+            duration_minutes=_parse_int(data.get('duration_minutes', 0)),
             thumbnail_url=data.get('thumbnail_url', ''),
             order=max_order + 1,
             is_published=is_published if is_published is not None else True,
@@ -426,16 +444,44 @@ def course_students(request, course_id):
         instructor = request.user.instructor_profile
         course = Course.objects.get(id=course_id, instructor=instructor)
         
-        enrollments = Enrollment.objects.filter(course=course).select_related('user')
+        enrollments = (
+            Enrollment.objects.filter(course=course)
+            .select_related('user')
+            .prefetch_related(
+                Prefetch("payments", queryset=Payment.objects.order_by("-created_at"))
+            )
+        )
         
-        data = [{
-            'id': enrollment.id,
-            'student_name': f"{enrollment.user.first_name} {enrollment.user.last_name}".strip() or enrollment.user.email,
-            'student_email': enrollment.user.email,
-            'progress_percent': float(enrollment.progress_percent),
-            'enrolled_at': enrollment.started_at.isoformat(),
-            'completed_at': enrollment.completed_at.isoformat() if enrollment.completed_at else None
-        } for enrollment in enrollments]
+        data = []
+        for enrollment in enrollments:
+            payment = enrollment.payments.all().first()
+            try:
+                certificate = enrollment.certificate
+            except Certificate.DoesNotExist:
+                certificate = None
+
+            data.append({
+                'id': enrollment.id,
+                'student_name': f"{enrollment.user.first_name} {enrollment.user.last_name}".strip() or enrollment.user.email,
+                'student_email': enrollment.user.email,
+                'progress_percent': float(enrollment.progress_percent),
+                'enrolled_at': enrollment.started_at.isoformat(),
+                'completed_at': enrollment.completed_at.isoformat() if enrollment.completed_at else None,
+                'payment': {
+                    'id': payment.id if payment else None,
+                    'amount': float(payment.amount) if payment else None,
+                    'currency': payment.currency if payment else None,
+                    'status': payment.status if payment else None,
+                    'provider': payment.provider if payment else None,
+                    'paid_at': payment.paid_at.isoformat() if payment and payment.paid_at else None,
+                },
+                'certificate': {
+                    'id': certificate.certificate_id if certificate else None,
+                    'issued_at': certificate.issued_at.isoformat() if certificate else None,
+                    'completion_date': certificate.completion_date.isoformat() if certificate else None,
+                    'final_score': certificate.final_score if certificate else None,
+                }
+            })
         
         return JsonResponse({'students': data})
         
@@ -455,6 +501,61 @@ def get_categories(request):
     data = [{'id': cat.id, 'name': cat.name} for cat in categories]
     
     return JsonResponse({'categories': data})
+
+
+# ============================================
+# PAYMENT VISIBILITY (INSTRUCTOR)
+# ============================================
+@login_required
+@require_http_methods(["GET"])
+def instructor_payments(request):
+    """Get payments for instructor's courses"""
+    try:
+        instructor = request.user.instructor_profile
+        if not instructor.is_approved:
+            return JsonResponse({'error': 'Not an approved instructor'}, status=403)
+    except:
+        return JsonResponse({'error': 'Not an instructor'}, status=403)
+
+    search = request.GET.get('search', '')
+    status = request.GET.get('status', '')
+    course_id = request.GET.get('course_id', '')
+    limit = min(int(request.GET.get('limit', 100)), 200)
+
+    payments = Payment.objects.filter(course__instructor=instructor).select_related("user", "course", "enrollment")
+
+    if search:
+        payments = payments.filter(
+            Q(user__email__icontains=search) |
+            Q(course__title__icontains=search) |
+            Q(provider_reference__icontains=search)
+        )
+
+    if status:
+        payments = payments.filter(status=status)
+
+    if course_id:
+        payments = payments.filter(course_id=course_id)
+
+    payments = payments[:limit]
+
+    data = [{
+        "id": payment.id,
+        "user_id": payment.user.id,
+        "user_email": payment.user.email,
+        "course_id": payment.course.id,
+        "course_title": payment.course.title,
+        "enrollment_id": payment.enrollment.id,
+        "amount": float(payment.amount),
+        "currency": payment.currency,
+        "status": payment.status,
+        "provider": payment.provider,
+        "provider_reference": payment.provider_reference,
+        "paid_at": payment.paid_at.isoformat() if payment.paid_at else None,
+        "created_at": payment.created_at.isoformat(),
+    } for payment in payments]
+
+    return JsonResponse({"payments": data})
 # ============================================
 # LESSON MANAGEMENT APIs
 # ============================================

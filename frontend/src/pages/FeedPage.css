@@ -40,11 +40,19 @@
   display: grid;
   place-items: center;
   font-weight: 600;
+  overflow: hidden;
 }
 
 .feed-avatar.small {
   width: 34px;
   height: 34px;
+}
+
+.feed-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 
 .feed-user-name {
@@ -270,6 +278,32 @@
   font-size: 13px;
   display: flex;
   gap: 6px;
+}
+
+.feed-comment-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #0f766e;
+  color: #fff;
+  display: grid;
+  place-items: center;
+  font-weight: 600;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.feed-comment-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.feed-comment-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .feed-comment-form {

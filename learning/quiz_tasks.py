@@ -2,6 +2,9 @@
 Quiz Generation Tasks
 Handles automatic quiz generation from video lessons
 """
+import os
+import tempfile
+
 from django.conf import settings
 from .models import Lesson, Quiz, Question, AnswerOption
 from .ai_services import QuizGenerator, TranscriptExtractor
@@ -150,10 +153,37 @@ def get_lesson_transcript(lesson):
     # Step 3: For uploaded videos, use Whisper Speech-to-Text
     if lesson.video_file:
         print("Extracting transcript from uploaded video using Whisper...")
-        video_path = lesson.video_file.path
-        transcript = extractor.get_video_summary(video_file=video_path)
-        if transcript:
-            return transcript
+
+        temp_path = None
+        video_path = None
+
+        try:
+            # Local storage: use direct path if available
+            try:
+                candidate = lesson.video_file.path
+            except Exception:
+                candidate = None
+
+            if candidate and os.path.exists(candidate):
+                video_path = candidate
+            else:
+                # Remote storage (S3/MinIO): copy to temp file
+                suffix = os.path.splitext(lesson.video_file.name or "")[1] or ".mp4"
+                with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
+                    for chunk in lesson.video_file.chunks():
+                        tmp.write(chunk)
+                    temp_path = tmp.name
+                video_path = temp_path
+
+            transcript = extractor.get_video_summary(video_file=video_path)
+            if transcript:
+                return transcript
+        finally:
+            if temp_path and os.path.exists(temp_path):
+                try:
+                    os.remove(temp_path)
+                except Exception:
+                    pass
     
     # Step 4: Fallback for missing transcripts
     if lesson.description:

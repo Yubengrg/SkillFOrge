@@ -222,6 +222,134 @@
   gap: 14px;
 }
 
+.certificate-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  max-width: 520px;
+}
+
+.certificate-stack-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 16px;
+  background: #fff;
+  text-align: left;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  margin-top: -18px;
+  box-shadow: 0 20px 35px rgba(15, 23, 42, 0.08);
+}
+
+.certificate-stack-card:first-child {
+  margin-top: 0;
+}
+
+.certificate-stack-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 26px 40px rgba(15, 23, 42, 0.12);
+}
+
+.certificate-gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+.certificate-thumb {
+  border: none;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+}
+
+.certificate-thumb__frame {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 14px;
+  box-shadow: 0 16px 28px rgba(15, 23, 42, 0.08);
+  position: relative;
+  overflow: hidden;
+  min-height: 170px;
+}
+
+.certificate-thumb__frame::before,
+.certificate-thumb__frame::after {
+  content: "";
+  position: absolute;
+  width: 140px;
+  height: 140px;
+  border-radius: 50%;
+  background: rgba(14, 116, 144, 0.08);
+  top: -70px;
+  right: -70px;
+}
+
+.certificate-thumb__frame::after {
+  background: rgba(15, 118, 110, 0.08);
+  bottom: -80px;
+  left: -80px;
+  top: auto;
+  right: auto;
+}
+
+.certificate-thumb__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #0f766e;
+  margin-bottom: 0.5rem;
+}
+
+.certificate-thumb__title {
+  color: #334155;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+}
+
+.certificate-thumb__body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  color: #0f172a;
+}
+
+.certificate-thumb__label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  color: #94a3b8;
+  letter-spacing: 0.08em;
+}
+
+.certificate-thumb__name {
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.certificate-thumb__course {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #0f766e;
+}
+
+.certificate-thumb__footer {
+  margin-top: 0.75rem;
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.7rem;
+  color: #64748b;
+}
+
+.certificate-thumb__id {
+  font-family: "Courier New", monospace;
+}
+
 .profile-card {
   border: 1px solid #e2e8f0;
   border-radius: 16px;

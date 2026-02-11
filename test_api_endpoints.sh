@@ -65,7 +65,7 @@ echo "4. Testing Frontend"
 echo "----------------------------"
 
 echo -n "Frontend server: "
-curl -s "http://localhost:5174" | grep -q "<title>" && echo "✓ PASS" || echo "✗ FAIL"
+curl -s "http://localhost:5173" | grep -q "<title>" && echo "✓ PASS" || echo "✗ FAIL"
 
 echo ""
 echo "=========================================="

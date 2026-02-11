@@ -34,13 +34,16 @@ def _parse_json(request):
         return {}
 
 
-def _user_summary(user):
+def _user_summary(user, request=None):
     profile = getattr(user, "profile", None)
+    avatar = profile.profile_photo.url if profile and profile.profile_photo else None
+    if avatar and request is not None:
+        avatar = request.build_absolute_uri(avatar)
     return {
         "id": user.id,
         "name": user.get_full_name() or user.first_name or user.email,
         "email": user.email,
-        "avatar": profile.profile_photo.url if profile and profile.profile_photo else None,
+        "avatar": avatar,
     }
 
 
@@ -52,12 +55,12 @@ def _serialize_media(media):
     }
 
 
-def _serialize_post(post, current_user, liked_ids=None, reposted_ids=None, include_repost=True):
+def _serialize_post(post, current_user, request=None, liked_ids=None, reposted_ids=None, include_repost=True):
     liked_ids = liked_ids or set()
     reposted_ids = reposted_ids or set()
     data = {
         "id": post.id,
-        "author": _user_summary(post.user),
+        "author": _user_summary(post.user, request=request),
         "content": post.content,
         "link": {
             "url": post.link_url,
@@ -78,6 +81,7 @@ def _serialize_post(post, current_user, liked_ids=None, reposted_ids=None, inclu
         data["repost_of"] = _serialize_post(
             post.repost_of,
             current_user,
+            request=request,
             liked_ids=liked_ids,
             reposted_ids=reposted_ids,
             include_repost=False,
@@ -195,7 +199,7 @@ def feed_list(request):
         .values_list("repost_of_id", flat=True)
     )
 
-    data = [_serialize_post(p, request.user, liked_ids, reposted_ids) for p in posts]
+    data = [_serialize_post(p, request.user, request=request, liked_ids=liked_ids, reposted_ids=reposted_ids) for p in posts]
     return JsonResponse({"feed_type": feed_type, "posts": data})
 
 
@@ -324,7 +328,7 @@ def post_comments(request, post_id):
         return JsonResponse({
             "comment": {
                 "id": comment.id,
-                "author": _user_summary(comment.user),
+                "author": _user_summary(comment.user, request=request),
                 "content": comment.content,
                 "created_at": comment.created_at.isoformat(),
             }
@@ -334,7 +338,7 @@ def post_comments(request, post_id):
     data = [
         {
             "id": c.id,
-            "author": _user_summary(c.user),
+            "author": _user_summary(c.user, request=request),
             "content": c.content,
             "created_at": c.created_at.isoformat(),
         }

@@ -67,6 +67,8 @@ def serialize_course(course, include_modules=True, include_lessons=False):
         "description": course.description,
         "category": course.category.name if course.category else None,
         "level": course.level,
+        "price_npr": course.price_npr,
+        "price_paisa": course.price_npr * 100,
         "is_published": course.is_published,
         "created_at": course.created_at.isoformat(),
     }
@@ -154,6 +156,15 @@ def enroll_course(request, slug):
         return auth_error
 
     course = get_object_or_404(Course, slug=slug, is_published=True)
+    if course.price_npr and course.price_npr > 0:
+        return JsonResponse(
+            {
+                "error": "payment_required",
+                "price_npr": course.price_npr,
+                "price_paisa": course.price_npr * 100,
+            },
+            status=402,
+        )
     enrollment, created = Enrollment.objects.get_or_create(
         user=request.user, course=course
     )

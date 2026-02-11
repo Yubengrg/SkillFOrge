@@ -202,13 +202,17 @@ function FeedPage({ currentUser }) {
       <div className="container feed-layout">
         <aside className="feed-sidebar">
           <div className="feed-card">
-            <div className="feed-user">
-              <div className="feed-avatar">
-                {currentUser?.first_name?.[0]?.toUpperCase() ||
+              <div className="feed-user">
+                <div className="feed-avatar">
+                {currentUser?.profile_photo ? (
+                  <img src={currentUser.profile_photo} alt="Profile" />
+                ) : (
+                  currentUser?.first_name?.[0]?.toUpperCase() ||
                   currentUser?.email?.[0]?.toUpperCase() ||
-                  "U"}
-              </div>
-              <div>
+                  "U"
+                )}
+                </div>
+                <div>
                 <div className="feed-user-name">
                   {currentUser?.first_name || currentUser?.email || "Guest"}
                 </div>
@@ -301,7 +305,11 @@ function FeedPage({ currentUser }) {
                 <div className="feed-post-header">
                   <Link className="feed-author" to={`/profile/${post.author.id}`}>
                     <div className="feed-avatar small">
-                      {post.author.name?.[0]?.toUpperCase() || "U"}
+                      {post.author.avatar ? (
+                        <img src={post.author.avatar} alt={post.author.name} />
+                      ) : (
+                        post.author.name?.[0]?.toUpperCase() || "U"
+                      )}
                     </div>
                     <div>
                       <div className="feed-post-author">{post.author.name}</div>
@@ -370,8 +378,17 @@ function FeedPage({ currentUser }) {
                     <div className="feed-comments-list">
                       {(commentsCache[post.id] || []).map((c) => (
                         <div className="feed-comment" key={c.id}>
-                          <strong>{c.author.name}</strong>
-                          <span>{c.content}</span>
+                          <div className="feed-comment-avatar">
+                            {c.author.avatar ? (
+                              <img src={c.author.avatar} alt={c.author.name} />
+                            ) : (
+                              c.author.name?.[0]?.toUpperCase() || "U"
+                            )}
+                          </div>
+                          <div className="feed-comment-body">
+                            <strong>{c.author.name}</strong>
+                            <span>{c.content}</span>
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -408,7 +425,11 @@ function FeedPage({ currentUser }) {
                     <div className="feed-post-header">
                       <Link className="feed-author" to={`/profile/${post.author.id}`}>
                         <div className="feed-avatar small">
-                          {post.author.name?.[0]?.toUpperCase() || "U"}
+                          {post.author.avatar ? (
+                            <img src={post.author.avatar} alt={post.author.name} />
+                          ) : (
+                            post.author.name?.[0]?.toUpperCase() || "U"
+                          )}
                         </div>
                         <div>
                           <div className="feed-post-author">{post.author.name}</div>

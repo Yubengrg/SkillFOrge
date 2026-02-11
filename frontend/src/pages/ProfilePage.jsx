@@ -390,6 +390,15 @@ function ProfilePage({ currentUser }) {
                 Activity
               </button>
             )}
+            {isOwnProfile && (
+              <button
+                type="button"
+                className={activeTab === "certificates" ? "active" : ""}
+                onClick={() => setActiveTab("certificates")}
+              >
+                Certificates ({profile.certificates?.length || 0})
+              </button>
+            )}
           </div>
 
           {activeTab === "overview" && (
@@ -474,6 +483,45 @@ function ProfilePage({ currentUser }) {
                   </div>
                 ))}
               </div>
+            </div>
+          )}
+
+          {activeTab === "certificates" && (
+            <div className="profile-section">
+              <h3>Certificates</h3>
+              {profile.certificates && profile.certificates.length > 0 ? (
+                <div className="certificate-gallery">
+                  {profile.certificates.map((cert) => (
+                    <button
+                      key={cert.id}
+                      type="button"
+                      className="certificate-thumb"
+                      onClick={() => navigate(`/certificate/${cert.id}`)}
+                    >
+                      <div className="certificate-thumb__frame">
+                        <div className="certificate-thumb__header">
+                          <span className="certificate-thumb__brand">SkillForge</span>
+                          <span className="certificate-thumb__title">Certificate</span>
+                        </div>
+                        <div className="certificate-thumb__body">
+                          <span className="certificate-thumb__label">Awarded to</span>
+                          <strong className="certificate-thumb__name">
+                            {profile.first_name} {profile.last_name}
+                          </strong>
+                          <span className="certificate-thumb__label">for completing</span>
+                          <div className="certificate-thumb__course">{cert.course_title}</div>
+                        </div>
+                        <div className="certificate-thumb__footer">
+                          <span>{new Date(cert.issued_at).toLocaleDateString()}</span>
+                          <span className="certificate-thumb__id">{cert.id}</span>
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <p>No certificates yet.</p>
+              )}
             </div>
           )}
         </section>

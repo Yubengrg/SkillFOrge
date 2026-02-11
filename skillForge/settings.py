@@ -175,12 +175,12 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 CORS_ALLOWED_ORIGINS = _env_list(
     "DJANGO_CORS_ALLOWED_ORIGINS",
-    "http://localhost:5173,http://localhost:5174",
+    "http://localhost:5173",
 )
 CORS_ALLOW_CREDENTIALS = True  # 👈 this is the key part for your error
 CSRF_TRUSTED_ORIGINS = _env_list(
     "DJANGO_CSRF_TRUSTED_ORIGINS",
-    "http://localhost:5173,http://localhost:5174",
+    "http://localhost:5173",
 )
 
 # Email / SMTP settings
@@ -195,6 +195,11 @@ EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
 DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", EMAIL_HOST_USER or "no-reply@skillforge.local")
 
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "")
+
+# Khalti (wallet widget)
+KHALTI_PUBLIC_KEY = os.getenv("KHALTI_PUBLIC_KEY", "")
+KHALTI_SECRET_KEY = os.getenv("KHALTI_SECRET_KEY", "")
+KHALTI_VERIFY_URL = os.getenv("KHALTI_VERIFY_URL", "https://khalti.com/api/v2/payment/verify/")
 
 # Session settings for proper multi-user testing
 SESSION_COOKIE_NAME = 'sessionid'
@@ -214,6 +219,33 @@ CSRF_COOKIE_SECURE = _env_bool("CSRF_COOKIE_SECURE", not DEBUG)
 # Media files (uploads)
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
+
+# Optional S3/MinIO storage (enable with USE_S3_STORAGE=true)
+USE_S3_STORAGE = _env_bool("USE_S3_STORAGE", False)
+if USE_S3_STORAGE:
+    INSTALLED_APPS += ["storages"]
+    STORAGES = {
+        "default": {
+            "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
+        },
+        "staticfiles": {
+            "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+        },
+    }
+
+    AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID", "")
+    AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY", "")
+    AWS_STORAGE_BUCKET_NAME = os.getenv("AWS_STORAGE_BUCKET_NAME", "")
+    AWS_S3_ENDPOINT_URL = os.getenv("AWS_S3_ENDPOINT_URL", "")
+    AWS_S3_REGION_NAME = os.getenv("AWS_S3_REGION_NAME", "us-east-1")
+    AWS_S3_SIGNATURE_VERSION = os.getenv("AWS_S3_SIGNATURE_VERSION", "s3v4")
+    AWS_S3_ADDRESSING_STYLE = os.getenv("AWS_S3_ADDRESSING_STYLE", "path")
+    AWS_DEFAULT_ACL = None
+    AWS_QUERYSTRING_AUTH = _env_bool("AWS_QUERYSTRING_AUTH", False)
+    AWS_QUERYSTRING_EXPIRE = int(os.getenv("AWS_QUERYSTRING_EXPIRE", "3600"))
+
+    if os.getenv("AWS_MEDIA_URL"):
+        MEDIA_URL = os.getenv("AWS_MEDIA_URL")
 
 # File upload settings
 DATA_UPLOAD_MAX_MEMORY_SIZE = 524288000  # 500MB (for video uploads)
@@ -240,6 +272,9 @@ MIN_QUIZ_QUESTIONS = 3  # Minimum questions per quiz
 MAX_QUIZ_QUESTIONS = 7  # Maximum questions per quiz  
 QUIZ_PASSING_SCORE = 70  # Percentage required to pass
 USE_OLLAMA = True # Use local Ollama AI (free)
+
+# Whisper transcription (requires openai-whisper + ffmpeg)
+USE_WHISPER = _env_bool("USE_WHISPER", True)
 
 # Basic logging (override via env if needed)
 LOG_LEVEL = os.getenv("DJANGO_LOG_LEVEL", "INFO")

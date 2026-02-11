@@ -207,11 +207,18 @@ class WhisperExtractor:
             str: Transcribed text or None
         """
         if not self.whisper_available:
-            print("Whisper not available")
+            if getattr(settings, "USE_WHISPER", True):
+                print("Whisper not available. Install openai-whisper to enable transcription.")
+            else:
+                print("Whisper disabled in settings.")
             return None
             
         if not os.path.exists(video_path):
             print(f"Video file not found: {video_path}")
+            return None
+
+        if subprocess.run(["which", "ffmpeg"], capture_output=True).returncode != 0:
+            print("ffmpeg is required for Whisper transcription but was not found on PATH.")
             return None
             
         try:
@@ -310,9 +317,28 @@ class TranscriptExtractor:
         if video_url and 'youtube' in video_url.lower():
             return self.get_youtube_transcript(video_url)
         
-        if video_file and os.path.exists(video_file):
-            extractor = WhisperExtractor()
-            return extractor.transcribe_video(video_file)
+        if video_file:
+            if isinstance(video_file, str) and os.path.exists(video_file):
+                extractor = WhisperExtractor()
+                return extractor.transcribe_video(video_file)
+            if hasattr(video_file, "read"):
+                try:
+                    suffix = ".mp4"
+                    with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
+                        while True:
+                            chunk = video_file.read(1024 * 1024)
+                            if not chunk:
+                                break
+                            tmp.write(chunk)
+                        temp_path = tmp.name
+                    extractor = WhisperExtractor()
+                    return extractor.transcribe_video(temp_path)
+                finally:
+                    try:
+                        if "temp_path" in locals() and os.path.exists(temp_path):
+                            os.remove(temp_path)
+                    except Exception:
+                        pass
             
         return None
 

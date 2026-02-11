@@ -19,7 +19,7 @@ The dashboards are redirecting you because the authentication state is not being
 4. Refresh the page
 
 ### Step 2: Login Properly
-1. Go to: http://localhost:5174/login
+1. Go to: http://localhost:5173/login
 2. Open DevTools → Network tab
 3. Enter credentials: `admin@skillforge.com` / `admin`
 4. Click "Sign in"
@@ -66,7 +66,7 @@ fetch('http://localhost:8000/api/auth/me/', {credentials: 'include'})
 **Solution**: Check `skillForge/settings.py`:
 ```python
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:5174",
+    "http://localhost:5173",
 ]
 CORS_ALLOW_CREDENTIALS = True
 ```

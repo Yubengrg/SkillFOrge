@@ -50,7 +50,7 @@ npm run dev
 
 **Browser 1 - Chrome Incognito**:
 1. Open NEW incognito window
-2. Go to: http://localhost:5174
+2. Go to: http://localhost:5173
 3. Open DevTools → Application → Clear site data
 4. Refresh
 5. Login as: `admin@skillforge.com` / `admin`
@@ -59,7 +59,7 @@ npm run dev
 
 **Browser 2 - Firefox Private**:
 1. Open NEW private window
-2. Go to: http://localhost:5174
+2. Go to: http://localhost:5173
 3. Open DevTools → Storage → Clear all
 4. Refresh
 5. Login as: `instructor@skillforge.com` / `instructor123`
@@ -67,7 +67,7 @@ npm run dev
 
 **Browser 3 - Safari Private** (or Edge):
 1. Open NEW private window
-2. Go to: http://localhost:5174
+2. Go to: http://localhost:5173
 3. Clear all data
 4. Login as new user
 

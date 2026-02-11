@@ -5,6 +5,7 @@ from . import instructor_api_views
 from . import learning_api_views
 from . import roadmap_api_views
 from . import social_api_views
+from . import payment_api_views
 
 urlpatterns = [
     # Existing course views
@@ -36,6 +37,24 @@ urlpatterns = [
     path("admin/courses/<int:course_id>/approve/", admin_api_views.approve_course, name="approve_course"),
     path("admin/courses/<int:course_id>/reject/", admin_api_views.reject_course, name="reject_course"),
     path("admin/users/", admin_api_views.all_users, name="all_users"),
+    path("admin/users/<int:user_id>/", admin_api_views.admin_user_detail, name="admin_user_detail"),
+    path("admin/users/<int:user_id>/activate/", admin_api_views.admin_set_user_active, name="admin_set_user_active"),
+    path("admin/users/<int:user_id>/make-admin/", admin_api_views.admin_make_admin, name="admin_make_admin"),
+    path("admin/users/<int:user_id>/remove-admin/", admin_api_views.admin_remove_admin, name="admin_remove_admin"),
+    path("admin/users/<int:user_id>/approve-instructor/", admin_api_views.admin_approve_instructor, name="admin_approve_instructor"),
+    path("admin/users/<int:user_id>/revoke-instructor/", admin_api_views.admin_revoke_instructor, name="admin_revoke_instructor"),
+    path("admin/users/<int:user_id>/force-logout/", admin_api_views.admin_force_logout, name="admin_force_logout"),
+    path("admin/users/<int:user_id>/reset-password/", admin_api_views.admin_reset_password, name="admin_reset_password"),
+    path("admin/users/<int:user_id>/delete/", admin_api_views.admin_delete_user, name="admin_delete_user"),
+    path("admin/users/<int:user_id>/export/", admin_api_views.admin_export_user, name="admin_export_user"),
+    path("admin/payments/", admin_api_views.admin_payments, name="admin_payments"),
+    path("admin/payments/<int:payment_id>/update/", admin_api_views.admin_update_payment, name="admin_update_payment"),
+
+    # ============================================
+    # PAYMENT APIs
+    # ============================================
+    path("payments/khalti/public-key/", payment_api_views.khalti_public_key, name="khalti_public_key"),
+    path("payments/khalti/verify/", payment_api_views.khalti_verify, name="khalti_verify"),
     
     # ============================================
     # INSTRUCTOR API ENDPOINTS
@@ -53,6 +72,7 @@ urlpatterns = [
     path("instructor/lessons/<int:lesson_id>/reorder/", instructor_api_views.reorder_lesson, name="reorder_lesson"),
     path("instructor/courses/<int:course_id>/students/", instructor_api_views.course_students, name="course_students"),
     path("instructor/categories/", instructor_api_views.get_categories, name="get_categories"),
+    path("instructor/payments/", instructor_api_views.instructor_payments, name="instructor_payments"),
     
     # ============================================
     # LEARNING API ENDPOINTS (Student Experience)

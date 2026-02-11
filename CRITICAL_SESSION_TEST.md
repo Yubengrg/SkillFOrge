@@ -22,7 +22,7 @@ cd frontend && npm run dev   # Terminal 2
 
 ### Step 2: Test in Browser 1 (Chrome)
 1. Open Chrome (regular, not incognito)
-2. Go to: http://localhost:5174
+2. Go to: http://localhost:5173
 3. Open DevTools → Console
 4. Run this BEFORE logging in:
 ```javascript
@@ -40,7 +40,7 @@ fetch('http://localhost:8000/api/auth/me/', {credentials: 'include'})
 
 ### Step 3: Test in Browser 2 (Firefox)
 1. Open Firefox (completely different browser)
-2. Go to: http://localhost:5174
+2. Go to: http://localhost:5173
 3. Open DevTools → Console
 4. Run BEFORE logging in:
 ```javascript

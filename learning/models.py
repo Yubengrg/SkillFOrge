@@ -93,6 +93,10 @@ class Course(models.Model):
     level = models.CharField(
         max_length=20, choices=LEVEL_CHOICES, default="beginner"
     )
+    price_npr = models.PositiveIntegerField(
+        default=0,
+        help_text="Course price in NPR (rupees). 0 means free.",
+    )
     learning_objectives = models.JSONField(
         default=list,
         help_text="List of learning objectives for AI roadmap generation"
@@ -274,6 +278,81 @@ class Enrollment(models.Model):
 
     def __str__(self):
         return f"{self.user.email} → {self.course.title}"
+
+
+# ============================================
+# PAYMENTS
+# ============================================
+class Payment(models.Model):
+    """Payment record for a course enrollment."""
+
+    STATUS_CHOICES = [
+        ("pending", "Pending"),
+        ("paid", "Paid"),
+        ("failed", "Failed"),
+        ("refunded", "Refunded"),
+    ]
+
+    enrollment = models.ForeignKey(
+        Enrollment,
+        on_delete=models.CASCADE,
+        related_name="payments",
+    )
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="payments",
+    )
+    course = models.ForeignKey(
+        Course,
+        on_delete=models.CASCADE,
+        related_name="payments",
+    )
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    currency = models.CharField(max_length=10, default="USD")
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default="pending",
+    )
+    provider = models.CharField(max_length=50, blank=True)
+    provider_reference = models.CharField(max_length=120, blank=True)
+    paid_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.user.email} → {self.course.title} ({self.amount} {self.currency})"
+
+
+# ============================================
+# ADMIN AUDIT LOG
+# ============================================
+class AdminActionLog(models.Model):
+    """Audit log for admin actions on users."""
+
+    admin_user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="admin_actions",
+    )
+    target_user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="admin_action_targets",
+    )
+    action = models.CharField(max_length=100)
+    metadata = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.admin_user.email} → {self.target_user.email} ({self.action})"
 
 
 # ============================================

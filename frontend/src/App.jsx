@@ -15,6 +15,7 @@ import InstructorDashboard from "./pages/InstructorDashboard";
 import CourseLearningPage from "./pages/CourseLearningPage";
 import BecomeInstructorPage from "./pages/BecomeInstructorPage";
 import ProfilePage from "./pages/ProfilePage";
+import CertificatePage from "./pages/CertificatePage";
 import { ToastProvider } from "./components/Toast";
 import { AUTH_API, API_BASE } from "./config";
 
@@ -379,9 +380,13 @@ function App() {
                     onClick={() => setMenuOpen((v) => !v)}
                   >
                     <span className="menu__avatar">
-                      {currentUser.first_name
-                        ? currentUser.first_name[0].toUpperCase()
-                        : currentUser.email[0].toUpperCase()}
+                      {currentUser.profile_photo ? (
+                        <img src={currentUser.profile_photo} alt="Profile" />
+                      ) : (
+                        (currentUser.first_name
+                          ? currentUser.first_name[0].toUpperCase()
+                          : currentUser.email[0].toUpperCase())
+                      )}
                     </span>
                     <span className="menu__label">
                       {currentUser.first_name || currentUser.email}
@@ -485,9 +490,13 @@ function App() {
                 <div className="nav__drawer-header">
                   <div className="nav__mobile-user">
                     <span className="nav__mobile-avatar">
-                      {currentUser?.first_name
-                        ? currentUser.first_name[0].toUpperCase()
-                        : currentUser?.email?.[0]?.toUpperCase() || "U"}
+                      {currentUser?.profile_photo ? (
+                        <img src={currentUser.profile_photo} alt="Profile" />
+                      ) : (
+                        (currentUser?.first_name
+                          ? currentUser.first_name[0].toUpperCase()
+                          : currentUser?.email?.[0]?.toUpperCase() || "U")
+                      )}
                     </span>
                     <div>
                       <div className="nav__mobile-name">
@@ -634,6 +643,10 @@ function App() {
           <Route
             path="/profile/:userId"
             element={<ProfilePage currentUser={currentUser} />}
+          />
+          <Route
+            path="/certificate/:certificateId"
+            element={<CertificatePage />}
           />
         </Routes>
       </div>

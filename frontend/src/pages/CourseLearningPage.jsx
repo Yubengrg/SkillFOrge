@@ -18,6 +18,38 @@ function CourseLearningPage({ currentUser }) {
     const [error, setError] = useState("");
     const [showQuiz, setShowQuiz] = useState(false);
     const [autoPlayLessonId, setAutoPlayLessonId] = useState(null);
+    const [showCompletion, setShowCompletion] = useState(false);
+    const [certificate, setCertificate] = useState(null);
+
+    const fetchProgress = async () => {
+        if (!currentUser || !slug) return;
+        try {
+            const progressRes = await fetch(`${API_BASE}/learning/courses/${slug}/progress/`, {
+                credentials: "include",
+            });
+
+            if (progressRes.ok) {
+                const progressData = await progressRes.json();
+                setProgress(progressData);
+                if (progressData.is_complete && !showCompletion) {
+                    try {
+                        const certRes = await fetch(`${API_BASE}/learning/courses/${slug}/certificate/`, {
+                            credentials: "include",
+                        });
+                        const certData = await certRes.json();
+                        if (certRes.ok && certData.certificate) {
+                            setCertificate(certData.certificate);
+                        }
+                        setShowCompletion(true);
+                    } catch (err) {
+                        console.error("Error fetching certificate:", err);
+                    }
+                }
+            }
+        } catch (err) {
+            console.error("Error fetching progress:", err);
+        }
+    };
 
     // Check authentication
     useEffect(() => {
@@ -65,14 +97,7 @@ function CourseLearningPage({ currentUser }) {
                 }
 
                 // Fetch progress
-                const progressRes = await fetch(`${API_BASE}/learning/courses/${slug}/progress/`, {
-                    credentials: "include",
-                });
-
-                if (progressRes.ok) {
-                    const progressData = await progressRes.json();
-                    setProgress(progressData);
-                }
+                await fetchProgress();
 
             } catch (err) {
                 console.error("Error fetching course data:", err);
@@ -115,6 +140,7 @@ function CourseLearningPage({ currentUser }) {
                 progress_percent: newProgressPercent,
             });
         }
+        fetchProgress();
 
         // Close quiz modal after a short delay
         setTimeout(() => {
@@ -158,6 +184,7 @@ function CourseLearningPage({ currentUser }) {
                         progress_percent: data.progress_percent,
                     });
                 }
+                fetchProgress();
             }
         } catch (err) {
             console.error("Error completing lesson:", err);
@@ -217,6 +244,98 @@ function CourseLearningPage({ currentUser }) {
 
     return (
         <div style={{ display: "flex", minHeight: "calc(100vh - 60px)", background: "#000" }}>
+            {showCompletion && (
+                <div style={{
+                    position: "fixed",
+                    inset: 0,
+                    background: "rgba(15,23,42,0.65)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    zIndex: 9999,
+                    padding: "1.5rem",
+                }}>
+                    <div style={{
+                        background: "#fff",
+                        borderRadius: "1.5rem",
+                        padding: "2rem",
+                        maxWidth: 540,
+                        width: "100%",
+                        textAlign: "center",
+                        position: "relative",
+                        overflow: "hidden",
+                        boxShadow: "0 30px 60px rgba(0,0,0,0.25)",
+                    }}>
+                        <div style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
+                            {Array.from({ length: 24 }).map((_, i) => (
+                                <span
+                                    key={`conf-${i}`}
+                                    className="confetti-piece"
+                                    style={{
+                                        left: `${(i * 7) % 100}%`,
+                                        animationDelay: `${(i % 6) * 0.2}s`,
+                                    }}
+                                />
+                            ))}
+                        </div>
+                        <h2 style={{ marginTop: 0, fontSize: "1.6rem", color: "#0f172a" }}>
+                            Congratulations!
+                        </h2>
+                        <p style={{ color: "#475569", marginBottom: "1.25rem" }}>
+                            You completed the course. Your certificate is ready.
+                        </p>
+                        {certificate && (
+                            <div style={{
+                                background: "#f8fafc",
+                                borderRadius: "1rem",
+                                padding: "1rem",
+                                marginBottom: "1rem",
+                                border: "1px solid #e2e8f0",
+                            }}>
+                                <div style={{ fontWeight: 700 }}>{certificate.course_title}</div>
+                                <div style={{ fontSize: "0.85rem", color: "#64748b" }}>
+                                    Certificate ID: {certificate.id}
+                                </div>
+                            </div>
+                        )}
+                        <div style={{ display: "flex", gap: "0.75rem", justifyContent: "center" }}>
+                            <button
+                                className="btn btn--ghost"
+                                onClick={() => setShowCompletion(false)}
+                            >
+                                Close
+                            </button>
+                            {certificate && (
+                                <button
+                                    className="btn btn--primary"
+                                    onClick={() => window.location.assign(`/certificate/${certificate.id}`)}
+                                >
+                                    View Certificate
+                                </button>
+                            )}
+                        </div>
+                        <style>{`
+                            .confetti-piece {
+                                position: absolute;
+                                top: -20px;
+                                width: 10px;
+                                height: 18px;
+                                border-radius: 4px;
+                                background: #f59e0b;
+                                opacity: 0.9;
+                                animation: confetti-fall 2.5s linear infinite;
+                            }
+                            .confetti-piece:nth-child(3n) { background: #10b981; }
+                            .confetti-piece:nth-child(4n) { background: #3b82f6; }
+                            .confetti-piece:nth-child(5n) { background: #ec4899; }
+                            @keyframes confetti-fall {
+                                0% { transform: translateY(0) rotate(0deg); }
+                                100% { transform: translateY(420px) rotate(220deg); }
+                            }
+                        `}</style>
+                    </div>
+                </div>
+            )}
             {/* Lesson Sidebar */}
             <aside
                 style={{
@@ -233,10 +352,31 @@ function CourseLearningPage({ currentUser }) {
                     </h2>
                     {progress && (
                         <div style={{ marginBottom: "1rem" }}>
-                            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "0.5rem" }}>
-                                <span style={{ fontSize: "0.85rem", color: "#9ca3af" }}>Progress</span>
+                            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "0.35rem" }}>
+                                <span style={{ fontSize: "0.85rem", color: "#9ca3af" }}>Lessons</span>
                                 <span style={{ fontSize: "0.85rem", color: "#10b981" }}>
-                                    {Math.round(progress.progress_percent)}%
+                                    {Math.round(progress.lessons?.percent || 0)}%
+                                </span>
+                            </div>
+                            <div style={{
+                                width: "100%",
+                                height: 6,
+                                background: "#374151",
+                                borderRadius: 999,
+                                overflow: "hidden",
+                                marginBottom: "0.6rem",
+                            }}>
+                                <div style={{
+                                    width: `${progress.lessons?.percent || 0}%`,
+                                    height: "100%",
+                                    background: "linear-gradient(90deg, #10b981, #34d399)",
+                                    transition: "width 0.3s",
+                                }} />
+                            </div>
+                            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "0.35rem" }}>
+                                <span style={{ fontSize: "0.85rem", color: "#9ca3af" }}>Quizzes</span>
+                                <span style={{ fontSize: "0.85rem", color: "#f59e0b" }}>
+                                    {Math.round(progress.quizzes?.percent || 0)}%
                                 </span>
                             </div>
                             <div style={{
@@ -247,9 +387,9 @@ function CourseLearningPage({ currentUser }) {
                                 overflow: "hidden",
                             }}>
                                 <div style={{
-                                    width: `${progress.progress_percent}%`,
+                                    width: `${progress.quizzes?.percent || 0}%`,
                                     height: "100%",
-                                    background: "linear-gradient(90deg, #10b981, #34d399)",
+                                    background: "linear-gradient(90deg, #f59e0b, #fbbf24)",
                                     transition: "width 0.3s",
                                 }} />
                             </div>

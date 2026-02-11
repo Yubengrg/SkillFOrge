@@ -190,6 +190,28 @@
   font-size: 0.85rem;
 }
 
+.admin-filter-row {
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+.admin-input,
+.admin-select {
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  border-radius: 0.75rem;
+  padding: 0.6rem 0.85rem;
+  font-size: 0.9rem;
+  background: #fff;
+  color: #0f172a;
+  min-width: 220px;
+}
+
+.admin-input {
+  flex: 1;
+}
+
 .trend {
   display: flex;
   flex-direction: column;
@@ -315,6 +337,13 @@
   display: flex;
   gap: 0.5rem;
   flex-wrap: wrap;
+}
+
+.admin-action-row {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.75rem;
 }
 
 .action-btn {

@@ -16,6 +16,7 @@ from .models import (
     Course, Lesson, Quiz, Question, AnswerOption,
     QuizAttempt, Enrollment, LessonProgress, Certificate
 )
+from .quiz_tasks import generate_quiz_for_lesson
 
 def _youtube_thumbnail(url):
     if not url:
@@ -277,12 +278,34 @@ def lesson_quiz(request, lesson_id):
         
         # Get quiz for this lesson
         quiz = Quiz.objects.filter(lesson=lesson).first()
-        
+
         if not quiz:
-            return JsonResponse({
-                "error": "No quiz available for this lesson",
-                "quiz_generation_status": lesson.quiz_generation_status
-            }, status=404)
+            if not lesson.quiz_required:
+                return JsonResponse({
+                    "error": "No quiz required for this lesson",
+                    "quiz_generation_status": lesson.quiz_generation_status
+                }, status=404)
+
+            # Auto-generate quiz when missing
+            try:
+                lesson.quiz_generation_status = "processing"
+                lesson.save(update_fields=["quiz_generation_status"])
+                generated = generate_quiz_for_lesson(lesson.id)
+            except Exception as e:
+                lesson.quiz_generation_status = "failed"
+                lesson.save(update_fields=["quiz_generation_status"])
+                return JsonResponse({
+                    "error": f"Quiz generation failed: {str(e)}",
+                    "quiz_generation_status": lesson.quiz_generation_status
+                }, status=500)
+
+            quiz = Quiz.objects.filter(lesson=lesson).first()
+            if not quiz:
+                return JsonResponse({
+                    "error": "Quiz is being generated. Please try again shortly.",
+                    "quiz_generation_status": lesson.quiz_generation_status,
+                    "generated": bool(generated),
+                }, status=202)
         
         # Return quiz data (redirect to quiz_detail logic)
         questions_data = []
@@ -548,7 +571,8 @@ def course_progress(request, slug):
         # Calculate overall progress
         lesson_progress = (completed_lessons / total_lessons * 100) if total_lessons > 0 else 0
         quiz_progress = (passed_quizzes / total_quizzes * 100) if total_quizzes > 0 else 0
-        overall_progress = (lesson_progress + quiz_progress) / 2
+        # Keep overall progress consistent with Enrollment.progress_percent (lesson completion based)
+        overall_progress = float(enrollment.progress_percent or 0)
         
         # Check if course is complete
         is_complete = (completed_lessons == total_lessons and 

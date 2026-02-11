@@ -423,6 +423,14 @@ img {
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    overflow: hidden;
+  }
+
+  .nav__mobile-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
   }
 
   .nav__mobile-name {
@@ -445,6 +453,14 @@ img {
   color: #f7f7f4;
   font-size: 0.8rem;
   font-weight: 600;
+  overflow: hidden;
+}
+
+.menu__avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 
 .menu__label {
@@ -566,11 +582,31 @@ img {
   font-size: 1.1rem;
 }
 
+.course-card__desc {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
 .course-card__actions {
   margin-top: auto;
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 0.6rem;
+  flex-wrap: nowrap;
+}
+
+.course-card__actions .pill {
+  flex: 0 0 auto;
+  white-space: nowrap;
+  padding: 0.4rem 1rem;
+}
+
+.course-card__actions .btn {
+  flex: 1 1 0;
+  text-align: center;
+  white-space: nowrap;
+  padding: 0.55rem 1.4rem;
 }
 
 .filters {

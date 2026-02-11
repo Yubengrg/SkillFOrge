@@ -104,15 +104,15 @@ def main():
     print("  - GET  http://localhost:8000/api/instructor/categories/")
     print()
     print("Frontend URLs:")
-    print("  - Admin Dashboard: http://localhost:5174/admin-dashboard")
-    print("  - Instructor Dashboard: http://localhost:5174/instructor-dashboard")
+    print("  - Admin Dashboard: http://localhost:5173/admin-dashboard")
+    print("  - Instructor Dashboard: http://localhost:5173/instructor-dashboard")
     print()
     
     print_section("VERIFICATION COMPLETE")
     print("✓ Database check complete")
     print("✓ Both dashboards are ready for testing")
     print("\nNext steps:")
-    print("1. Log in as admin at http://localhost:5174/login")
+    print("1. Log in as admin at http://localhost:5173/login")
     print("2. Access Admin Dashboard from user menu")
     print("3. Log in as instructor to test Instructor Dashboard")
 

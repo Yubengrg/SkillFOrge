@@ -10,6 +10,7 @@ from django.views.decorators.csrf import csrf_exempt
 
 from django.contrib.auth.models import User
 from django.contrib.auth import authenticate, login as auth_login, logout as auth_logout
+from profiles.models import UserProfile
 
 from django.utils.encoding import force_bytes, force_str
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
@@ -216,6 +217,13 @@ def login_view(request):
     except:
         pass
     
+    profile = UserProfile.objects.filter(user=user).first()
+    profile_photo = (
+        request.build_absolute_uri(profile.profile_photo.url)
+        if profile and profile.profile_photo
+        else None
+    )
+
     return JsonResponse(
         {
             "message": "logged in successfully",
@@ -228,6 +236,7 @@ def login_view(request):
                 "is_staff": user.is_staff or user.is_superuser,
                 "is_superuser": user.is_superuser,
                 "is_instructor": is_instructor,
+                "profile_photo": profile_photo,
             },
         }
     )
@@ -272,6 +281,13 @@ def me(request):
     except:
         pass
     
+    profile = UserProfile.objects.filter(user=user).first()
+    profile_photo = (
+        request.build_absolute_uri(profile.profile_photo.url)
+        if profile and profile.profile_photo
+        else None
+    )
+
     return JsonResponse(
         {
             "user": {
@@ -283,6 +299,7 @@ def me(request):
                 "is_staff": user.is_staff or user.is_superuser,
                 "is_superuser": user.is_superuser,
                 "is_instructor": is_instructor,
+                "profile_photo": profile_photo,
             }
         }
     )
@@ -431,6 +448,13 @@ def google_login(request):
     except:
         pass
     
+    profile = UserProfile.objects.filter(user=user).first()
+    profile_photo = (
+        request.build_absolute_uri(profile.profile_photo.url)
+        if profile and profile.profile_photo
+        else None
+    )
+
     return JsonResponse(
         {
             "message": "logged in with Google",
@@ -443,6 +467,7 @@ def google_login(request):
                 "is_staff": user.is_staff or user.is_superuser,
                 "is_superuser": user.is_superuser,
                 "is_instructor": is_instructor,
+                "profile_photo": profile_photo,
             },
         }
     )
@@ -675,6 +700,25 @@ def get_profile(request, user_id=None):
         profile_data["location"] = None
         profile_data["website"] = None
         profile_data["social_links"] = {}
+
+    # Certificates (own profile only)
+    if is_own_profile:
+        try:
+            from learning.models import Certificate
+            certificates = Certificate.objects.filter(user=target_user).select_related("course").order_by("-issued_at")
+            profile_data["certificates"] = [
+                {
+                    "id": c.certificate_id,
+                    "course_title": c.course.title,
+                    "course_slug": c.course.slug,
+                    "completion_date": c.completion_date.isoformat(),
+                    "issued_at": c.issued_at.isoformat(),
+                    "final_score": c.final_score,
+                }
+                for c in certificates
+            ]
+        except Exception:
+            profile_data["certificates"] = []
     
     # Instructor data
     if role == 'instructor':

@@ -26,6 +26,7 @@ function InstructorDashboard({ currentUser }) {
     level: "beginner",
     learning_objectives: "",
     estimated_duration_hours: 0,
+    price_npr: 0,
   });
 
   useEffect(() => {
@@ -124,6 +125,7 @@ function InstructorDashboard({ currentUser }) {
           level: "beginner",
           learning_objectives: "",
           estimated_duration_hours: 0,
+          price_npr: 0,
         });
         window.location.reload();
       } else {
@@ -309,6 +311,9 @@ function InstructorDashboard({ currentUser }) {
                       <div>
                         <h3>{course.title}</h3>
                         <div className="meta">{course.category || "Uncategorized"} · {course.level}</div>
+                        <div className="meta">
+                          {course.price_npr > 0 ? `NPR ${course.price_npr}` : "Free"}
+                        </div>
                       </div>
                       <div>
                         <div className="metric">{course.enrollments}</div>
@@ -377,6 +382,7 @@ function InstructorDashboard({ currentUser }) {
                 <thead>
                   <tr>
                     <th>Course</th>
+                    <th>Price</th>
                     <th>Students</th>
                     <th>Status</th>
                     <th className="actions"></th>
@@ -389,6 +395,7 @@ function InstructorDashboard({ currentUser }) {
                         <div style={{ fontWeight: 600 }}>{course.title}</div>
                         <div className="panel-muted">{course.category} · {course.level}</div>
                       </td>
+                      <td>{course.price_npr > 0 ? `NPR ${course.price_npr}` : "Free"}</td>
                       <td>{course.enrollment_count}</td>
                       <td>
                         <span className={`status-pill ${course.is_approved ? "success" : "warning"}`}>
@@ -500,6 +507,16 @@ function InstructorDashboard({ currentUser }) {
                     type="number"
                     value={formData.estimated_duration_hours}
                     onChange={(e) => setFormData({ ...formData, estimated_duration_hours: parseInt(e.target.value) || 0 })}
+                    style={{ width: "100%", padding: "0.75rem", borderRadius: "0.7rem", border: "1px solid #e5e7eb" }}
+                  />
+                </div>
+                <div style={{ marginBottom: "1.5rem" }}>
+                  <label style={{ display: "block", marginBottom: "0.4rem", fontWeight: 600 }}>Price (NPR)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={formData.price_npr}
+                    onChange={(e) => setFormData({ ...formData, price_npr: parseInt(e.target.value) || 0 })}
                     style={{ width: "100%", padding: "0.75rem", borderRadius: "0.7rem", border: "1px solid #e5e7eb" }}
                   />
                 </div>

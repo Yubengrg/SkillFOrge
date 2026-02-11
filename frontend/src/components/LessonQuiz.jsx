@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { API_BASE } from "../config";
 
 function LessonQuiz({ lessonId, onQuizPassed, onClose }) {
@@ -8,17 +8,38 @@ function LessonQuiz({ lessonId, onQuizPassed, onClose }) {
     const [submitted, setSubmitted] = useState(false);
     const [result, setResult] = useState(null);
     const [error, setError] = useState(null);
+    const [generating, setGenerating] = useState(false);
+    const retryTimer = useRef(null);
 
     useEffect(() => {
         fetchQuiz();
+        return () => {
+            if (retryTimer.current) {
+                clearTimeout(retryTimer.current);
+            }
+        };
     }, [lessonId]);
 
     const fetchQuiz = async () => {
         try {
             setLoading(true);
+            setGenerating(false);
             const res = await fetch(`${API_BASE}/learning/lessons/${lessonId}/quiz/`, {
                 credentials: 'include',
             });
+
+            if (res.status === 202) {
+                const data = await res.json();
+                setGenerating(true);
+                setError(data.error || 'Quiz is being generated. Please wait...');
+                if (retryTimer.current) {
+                    clearTimeout(retryTimer.current);
+                }
+                retryTimer.current = setTimeout(() => {
+                    fetchQuiz();
+                }, 3000);
+                return;
+            }
 
             if (res.ok) {
                 const data = await res.json();
@@ -106,7 +127,7 @@ function LessonQuiz({ lessonId, onQuizPassed, onClose }) {
     if (error) {
         return (
             <div style={{ padding: '2rem', textAlign: 'center' }}>
-                <p style={{ color: '#ef4444', marginBottom: '1rem' }}>{error}</p>
+                <p style={{ color: generating ? '#0f766e' : '#ef4444', marginBottom: '1rem' }}>{error}</p>
                 <button
                     onClick={onClose}
                     style={{

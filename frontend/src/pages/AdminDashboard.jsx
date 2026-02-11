@@ -17,6 +17,19 @@ function AdminDashboard({ currentUser }) {
   const [expanded, setExpanded] = useState({});
   const [detailItem, setDetailItem] = useState(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [users, setUsers] = useState([]);
+  const [userQuery, setUserQuery] = useState("");
+  const [userRole, setUserRole] = useState("all");
+  const [usersLoading, setUsersLoading] = useState(false);
+  const [usersError, setUsersError] = useState("");
+  const [userDetail, setUserDetail] = useState(null);
+  const [userDetailLoading, setUserDetailLoading] = useState(false);
+  const [userActionMessage, setUserActionMessage] = useState("");
+  const [payments, setPayments] = useState([]);
+  const [paymentsLoading, setPaymentsLoading] = useState(false);
+  const [paymentsError, setPaymentsError] = useState("");
+  const [paymentStatus, setPaymentStatus] = useState("all");
+  const [paymentSearch, setPaymentSearch] = useState("");
 
   useEffect(() => {
     if (!currentUser?.is_staff) {
@@ -51,6 +64,66 @@ function AdminDashboard({ currentUser }) {
 
     fetchOverview();
   }, []);
+
+  useEffect(() => {
+    if (activeTab !== "users") return;
+
+    const fetchUsers = async () => {
+      try {
+        setUsersLoading(true);
+        setUsersError("");
+        const params = new URLSearchParams();
+        if (userQuery.trim()) params.set("search", userQuery.trim());
+        if (userRole !== "all") params.set("role", userRole);
+        const res = await fetch(`${API_BASE}/admin/users/?${params.toString()}`, {
+          credentials: "include",
+        });
+        const payload = await res.json();
+        if (res.ok) {
+          setUsers(payload.users || []);
+        } else {
+          setUsersError(payload.error || "Unable to load users.");
+        }
+      } catch (error) {
+        console.error("Failed to load users", error);
+        setUsersError("Unable to load users.");
+      } finally {
+        setUsersLoading(false);
+      }
+    };
+
+    fetchUsers();
+  }, [activeTab, userQuery, userRole]);
+
+  useEffect(() => {
+    if (activeTab !== "payments") return;
+
+    const fetchPayments = async () => {
+      try {
+        setPaymentsLoading(true);
+        setPaymentsError("");
+        const params = new URLSearchParams();
+        if (paymentSearch.trim()) params.set("search", paymentSearch.trim());
+        if (paymentStatus !== "all") params.set("status", paymentStatus);
+        const res = await fetch(`${API_BASE}/admin/payments/?${params.toString()}`, {
+          credentials: "include",
+        });
+        const payload = await res.json();
+        if (res.ok) {
+          setPayments(payload.payments || []);
+        } else {
+          setPaymentsError(payload.error || "Unable to load payments.");
+        }
+      } catch (error) {
+        console.error("Failed to load payments", error);
+        setPaymentsError("Unable to load payments.");
+      } finally {
+        setPaymentsLoading(false);
+      }
+    };
+
+    fetchPayments();
+  }, [activeTab, paymentSearch, paymentStatus]);
 
   const stats = data.stats || {};
 
@@ -147,6 +220,119 @@ function AdminDashboard({ currentUser }) {
     }
   };
 
+  const fetchUserDetail = async (userId) => {
+    try {
+      setUserDetailLoading(true);
+      setUserActionMessage("");
+      const res = await fetch(`${API_BASE}/admin/users/${userId}/`, {
+        credentials: "include",
+      });
+      const payload = await res.json();
+      if (res.ok) {
+        setUserDetail(payload);
+      } else {
+        setUserActionMessage(payload.error || "Unable to load user details.");
+      }
+    } catch (error) {
+      console.error("Failed to load user detail", error);
+      setUserActionMessage("Unable to load user details.");
+    } finally {
+      setUserDetailLoading(false);
+    }
+  };
+
+  const runUserAction = async (userId, endpoint, method = "POST", body) => {
+    try {
+      setUserActionMessage("");
+      const res = await fetch(`${API_BASE}/admin/users/${userId}/${endpoint}/`, {
+        method,
+        credentials: "include",
+        headers: body ? { "Content-Type": "application/json" } : undefined,
+        body: body ? JSON.stringify(body) : undefined,
+      });
+      const payload = await res.json();
+      if (!res.ok) {
+        setUserActionMessage(payload.error || "Action failed.");
+        return;
+      }
+      if (endpoint === "delete") {
+        setUserDetail(null);
+        await fetchUsersAfterAction();
+        return;
+      }
+      if (payload.temp_password) {
+        setUserActionMessage(`Temporary password: ${payload.temp_password}`);
+      } else if (payload.sessions_cleared !== undefined) {
+        setUserActionMessage(`Sessions cleared: ${payload.sessions_cleared}`);
+      } else {
+        setUserActionMessage("Action completed.");
+      }
+      await fetchUsersAfterAction();
+      await fetchUserDetail(userId);
+    } catch (error) {
+      console.error("User action failed", error);
+      setUserActionMessage("Action failed.");
+    }
+  };
+
+  const exportUserData = async (userId) => {
+    try {
+      const res = await fetch(`${API_BASE}/admin/users/${userId}/export/`, {
+        credentials: "include",
+      });
+      const payload = await res.json();
+      if (!res.ok) {
+        setUserActionMessage(payload.error || "Export failed.");
+        return;
+      }
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `user-${userId}-export.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Export failed", error);
+      setUserActionMessage("Export failed.");
+    }
+  };
+
+  const updatePaymentStatus = async (paymentId, status) => {
+    try {
+      const res = await fetch(`${API_BASE}/admin/payments/${paymentId}/update/`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      });
+      const payload = await res.json();
+      if (!res.ok) {
+        setPaymentsError(payload.error || "Payment update failed.");
+        return;
+      }
+      setPayments((prev) =>
+        prev.map((p) => (p.id === paymentId ? { ...p, status } : p))
+      );
+    } catch (error) {
+      console.error("Payment update failed", error);
+      setPaymentsError("Payment update failed.");
+    }
+  };
+
+  const fetchUsersAfterAction = async () => {
+    const params = new URLSearchParams();
+    if (userQuery.trim()) params.set("search", userQuery.trim());
+    if (userRole !== "all") params.set("role", userRole);
+    const res = await fetch(`${API_BASE}/admin/users/?${params.toString()}`, {
+      credentials: "include",
+    });
+    const payload = await res.json();
+    if (res.ok) {
+      setUsers(payload.users || []);
+    }
+  };
+
   useEffect(() => {
     if (detailItem) {
       document.body.style.overflow = "hidden";
@@ -207,6 +393,18 @@ function AdminDashboard({ currentUser }) {
             onClick={() => setActiveTab("reports")}
           >
             Reports
+          </button>
+          <button
+            className={activeTab === "payments" ? "active" : ""}
+            onClick={() => setActiveTab("payments")}
+          >
+            Payments
+          </button>
+          <button
+            className={activeTab === "users" ? "active" : ""}
+            onClick={() => setActiveTab("users")}
+          >
+            User Management
           </button>
           <button className="muted" onClick={() => navigate("/")}
             style={{ marginTop: "1rem" }}>
@@ -491,6 +689,7 @@ function AdminDashboard({ currentUser }) {
                   <tr>
                     <th>Course</th>
                     <th>Category</th>
+                    <th>Price</th>
                     <th>Lessons</th>
                     <th className="actions"></th>
                   </tr>
@@ -510,6 +709,7 @@ function AdminDashboard({ currentUser }) {
                         </button>
                       </td>
                       <td>{course.category || "-"}</td>
+                      <td>{course.price_npr > 0 ? `NPR ${course.price_npr}` : "Free"}</td>
                       <td>{course.lesson_count}</td>
                       <td className="actions">
                         <div className="action-row">
@@ -563,6 +763,368 @@ function AdminDashboard({ currentUser }) {
               </table>
             )}
           </section>
+        )}
+
+        {activeTab === "payments" && (
+          <section className="dash-panel">
+            <div className="panel-header">
+              <div>
+                <div className="panel-title">Payments</div>
+                <div className="panel-muted">Review and update payment status.</div>
+              </div>
+              <span className="pill">{payments.length}</span>
+            </div>
+
+            <div className="admin-filter-row">
+              <input
+                className="admin-input"
+                type="search"
+                placeholder="Search by email, course, or reference"
+                value={paymentSearch}
+                onChange={(e) => setPaymentSearch(e.target.value)}
+              />
+              <select
+                className="admin-select"
+                value={paymentStatus}
+                onChange={(e) => setPaymentStatus(e.target.value)}
+              >
+                <option value="all">All statuses</option>
+                <option value="pending">Pending</option>
+                <option value="paid">Paid</option>
+                <option value="failed">Failed</option>
+                <option value="refunded">Refunded</option>
+              </select>
+            </div>
+
+            {paymentsLoading ? (
+              <p className="panel-muted">Loading payments...</p>
+            ) : paymentsError ? (
+              <p className="panel-muted">{paymentsError}</p>
+            ) : payments.length === 0 ? (
+              <p className="panel-muted">No payments found.</p>
+            ) : (
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>User</th>
+                    <th>Course</th>
+                    <th>Amount</th>
+                    <th>Status</th>
+                    <th className="actions"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {payments.map((payment) => (
+                    <tr key={payment.id}>
+                      <td>
+                        <div style={{ fontWeight: 600 }}>{payment.user_email}</div>
+                        <div className="panel-muted">{payment.provider_reference || "-"}</div>
+                      </td>
+                      <td>{payment.course_title}</td>
+                      <td>{payment.amount} {payment.currency}</td>
+                      <td>
+                        <span className={`status-pill ${payment.status === "paid" ? "success" : payment.status === "refunded" ? "warning" : ""}`}>
+                          {payment.status}
+                        </span>
+                      </td>
+                      <td className="actions">
+                        <div className="action-row">
+                          <button
+                            className="action-btn secondary"
+                            onClick={() => updatePaymentStatus(payment.id, "paid")}
+                          >
+                            Mark Paid
+                          </button>
+                          <button
+                            className="action-btn"
+                            onClick={() => updatePaymentStatus(payment.id, "refunded")}
+                          >
+                            Refund
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </section>
+        )}
+
+        {activeTab === "users" && (
+          <section className="dash-panel">
+            <div className="panel-header">
+              <div>
+                <div className="panel-title">User management</div>
+                <div className="panel-muted">Search, filter, and audit user activity.</div>
+              </div>
+              <span className="pill">{users.length}</span>
+            </div>
+
+            <div className="admin-filter-row">
+              <input
+                className="admin-input"
+                type="search"
+                placeholder="Search by name or email"
+                value={userQuery}
+                onChange={(e) => setUserQuery(e.target.value)}
+              />
+              <select
+                className="admin-select"
+                value={userRole}
+                onChange={(e) => setUserRole(e.target.value)}
+              >
+                <option value="all">All roles</option>
+                <option value="admin">Admins</option>
+                <option value="instructor">Instructors</option>
+                <option value="learner">Learners</option>
+              </select>
+            </div>
+
+            {usersLoading ? (
+              <p className="panel-muted">Loading users...</p>
+            ) : usersError ? (
+              <p className="panel-muted">{usersError}</p>
+            ) : users.length === 0 ? (
+              <p className="panel-muted">No users found.</p>
+            ) : (
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>User</th>
+                    <th>Role</th>
+                    <th>Status</th>
+                    <th>Joined</th>
+                    <th>Last login</th>
+                    <th className="actions"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {users.map((user) => {
+                    let roleLabel = "Learner";
+                    if (user.is_staff) roleLabel = "Admin";
+                    else if (user.is_instructor) roleLabel = "Instructor";
+                    return (
+                      <tr key={user.id}>
+                        <td>
+                          <div style={{ fontWeight: 600 }}>{user.name}</div>
+                          <div className="panel-muted ellipsis">{user.email}</div>
+                        </td>
+                        <td>
+                          <span className={`status-pill ${roleLabel === "Admin" ? "warning" : ""}`}>
+                            {roleLabel}
+                          </span>
+                        </td>
+                        <td>
+                          <span className={`status-pill ${user.is_active ? "success" : "warning"}`}>
+                            {user.is_active ? "Active" : "Inactive"}
+                          </span>
+                        </td>
+                        <td>{user.date_joined ? new Date(user.date_joined).toLocaleString() : "-"}</td>
+                        <td>{user.last_login ? new Date(user.last_login).toLocaleString() : "-"}</td>
+                        <td className="actions">
+                          <button
+                            className="action-btn secondary"
+                            onClick={() => fetchUserDetail(user.id)}
+                          >
+                            Manage
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
+          </section>
+        )}
+
+        {userDetail && (
+          <div
+            style={{
+              position: "fixed",
+              inset: 0,
+              background: "rgba(15,23,42,0.55)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 1000,
+              padding: "1.5rem",
+            }}
+            onClick={() => setUserDetail(null)}
+          >
+            <div
+              style={{
+                background: "#fff",
+                borderRadius: "1rem",
+                maxWidth: 720,
+                width: "100%",
+                maxHeight: "85vh",
+                overflow: "hidden",
+                display: "flex",
+                flexDirection: "column",
+                boxShadow: "0 30px 60px rgba(15,23,42,0.2)",
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div
+                style={{
+                  position: "sticky",
+                  top: 0,
+                  zIndex: 1,
+                  background: "#fff",
+                  padding: "1.5rem 1.5rem 0.75rem",
+                  borderBottom: "1px solid #e5e7eb",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  gap: "1rem",
+                }}
+              >
+                <div>
+                  <h3 style={{ margin: 0, fontSize: "1.25rem" }}>{userDetail.user.name}</h3>
+                  <p className="panel-muted" style={{ marginTop: "0.25rem" }}>{userDetail.user.email}</p>
+                </div>
+                <button className="action-btn secondary" onClick={() => setUserDetail(null)}>
+                  Close
+                </button>
+              </div>
+
+              <div style={{ padding: "1rem 1.5rem", overflowY: "auto" }}>
+                {userDetailLoading ? (
+                  <p className="panel-muted">Loading user details...</p>
+                ) : (
+                  <>
+                    <div className="admin-action-row">
+                      <button
+                        className="action-btn secondary"
+                        onClick={() => {
+                          setUserDetail(null);
+                          navigate(`/profile/${userDetail.user.id}`);
+                        }}
+                      >
+                        View Profile
+                      </button>
+                    </div>
+
+                    <div className="admin-action-row">
+                      <button
+                        className="action-btn"
+                        onClick={() => runUserAction(userDetail.user.id, "activate", "POST", { is_active: !userDetail.user.is_active })}
+                      >
+                        {userDetail.user.is_active ? "Deactivate" : "Activate"}
+                      </button>
+                      <button
+                        className="action-btn secondary"
+                        onClick={() => runUserAction(userDetail.user.id, "make-admin")}
+                      >
+                        Make Admin
+                      </button>
+                      <button
+                        className="action-btn secondary"
+                        onClick={() => runUserAction(userDetail.user.id, "remove-admin")}
+                      >
+                        Remove Admin
+                      </button>
+                      <button
+                        className="action-btn"
+                        onClick={() => runUserAction(userDetail.user.id, "approve-instructor")}
+                      >
+                        Approve Instructor
+                      </button>
+                      <button
+                        className="action-btn secondary"
+                        onClick={() => runUserAction(userDetail.user.id, "revoke-instructor")}
+                      >
+                        Revoke Instructor
+                      </button>
+                    </div>
+
+                    <div className="admin-action-row">
+                      <button
+                        className="action-btn secondary"
+                        onClick={() => runUserAction(userDetail.user.id, "force-logout")}
+                      >
+                        Force Logout
+                      </button>
+                      <button
+                        className="action-btn secondary"
+                        onClick={() => runUserAction(userDetail.user.id, "reset-password")}
+                      >
+                        Reset Password
+                      </button>
+                      <button
+                        className="action-btn secondary"
+                        onClick={() => exportUserData(userDetail.user.id)}
+                      >
+                        Export JSON
+                      </button>
+                      <button
+                        className="action-btn"
+                        onClick={() => {
+                          if (confirm("Delete this user? This cannot be undone.")) {
+                            runUserAction(userDetail.user.id, "delete", "DELETE");
+                          }
+                        }}
+                      >
+                        Delete User
+                      </button>
+                    </div>
+
+                    {userActionMessage && (
+                      <p className="panel-muted" style={{ marginTop: "0.75rem" }}>
+                        {userActionMessage}
+                      </p>
+                    )}
+
+                    <div style={{ marginTop: "1rem" }}>
+                      <h4 style={{ marginBottom: "0.4rem" }}>Profile</h4>
+                      <p className="panel-muted">
+                        {userDetail.profile.bio || "No bio"}
+                      </p>
+                      {userDetail.profile.profile_photo && (
+                        <img
+                          src={userDetail.profile.profile_photo}
+                          alt="Profile"
+                          style={{ width: 80, height: 80, borderRadius: "50%", marginTop: "0.5rem" }}
+                        />
+                      )}
+                    </div>
+
+                    <div style={{ marginTop: "1rem" }}>
+                      <h4 style={{ marginBottom: "0.4rem" }}>Recent activity</h4>
+                      {userDetail.activities.length === 0 ? (
+                        <p className="panel-muted">No recent activity.</p>
+                      ) : (
+                        <ul style={{ margin: 0, paddingLeft: "1.25rem", color: "#475569" }}>
+                          {userDetail.activities.map((activity, idx) => (
+                            <li key={`${activity.type}-${idx}`}>
+                              {activity.description} — {new Date(activity.created_at).toLocaleString()}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+
+                    <div style={{ marginTop: "1rem" }}>
+                      <h4 style={{ marginBottom: "0.4rem" }}>Payments</h4>
+                      {userDetail.payments.length === 0 ? (
+                        <p className="panel-muted">No payments.</p>
+                      ) : (
+                        <ul style={{ margin: 0, paddingLeft: "1.25rem", color: "#475569" }}>
+                          {userDetail.payments.map((payment) => (
+                            <li key={payment.id}>
+                              {payment.course_title} — {payment.amount} {payment.currency} ({payment.status})
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
         )}
 
         {detailItem && detailItem.detailType === "instructor" && (
